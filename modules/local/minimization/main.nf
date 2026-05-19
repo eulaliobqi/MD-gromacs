@@ -5,7 +5,7 @@ process MINIMIZATION {
     publishDir { "${params.outdir}/${meta.id}/em" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(ions_gro), path(top), path(itps)
+    tuple val(meta), path(ions_gro), path(top, stageAs: 'input.top'), path(itps)
 
     output:
     tuple val(meta), path("em.gro"), path("topol.top"), path("*.itp"), emit: system

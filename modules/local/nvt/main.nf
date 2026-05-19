@@ -5,7 +5,7 @@ process NVT {
     publishDir { "${params.outdir}/${meta.id}/nvt" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(em_gro), path(top), path(itps)
+    tuple val(meta), path(em_gro), path(top, stageAs: 'input.top'), path(itps)
 
     output:
     tuple val(meta), path("nvt.gro"), path("nvt.cpt"), path("topol.top"), path("*.itp"), emit: system

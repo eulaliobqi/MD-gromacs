@@ -5,7 +5,7 @@ process BOX_SOLVATE_IONS {
     publishDir { "${params.outdir}/${meta.id}/box" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(gro), path(top), path(itps)
+    tuple val(meta), path(gro), path(top, stageAs: 'input.top'), path(itps)
 
     output:
     tuple val(meta), path("ions.gro"), path("topol.top"), path("*.itp"), emit: system

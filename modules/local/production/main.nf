@@ -5,7 +5,7 @@ process PRODUCTION {
     publishDir { "${params.outdir}/${meta.id}/prod" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(npt_gro), path(npt_cpt), path(top), path(itps)
+    tuple val(meta), path(npt_gro), path(npt_cpt), path(top, stageAs: 'input.top'), path(itps)
 
     output:
     tuple val(meta), path("md.tpr"), path("md.xtc"), emit: traj
