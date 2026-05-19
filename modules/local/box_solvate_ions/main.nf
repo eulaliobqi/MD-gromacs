@@ -5,15 +5,16 @@ process BOX_SOLVATE_IONS {
     publishDir { "${params.outdir}/${meta.id}/box" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(gro), path(top, stageAs: 'input.top'), path(itps)
+    tuple val(meta), path(gro), path(top, stageAs: 'input.top'), path(itps, stageAs: 'itp_in/*')
 
     output:
     tuple val(meta), path("ions.gro"), path("topol.top"), path("*.itp"), emit: system
 
     script:
     """
-    # Copia topology (solvate e genion modificam o arquivo)
+    # Copia topology e itps (solvate e genion modificam topol.top)
     cp ${top} topol.top
+    cp itp_in/*.itp .
 
     # Caixa dodecaédrica com margem de ${params.box_dist} nm
     ${params.gmx_cmd} editconf \\

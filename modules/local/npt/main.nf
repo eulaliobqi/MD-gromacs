@@ -5,7 +5,7 @@ process NPT {
     publishDir { "${params.outdir}/${meta.id}/npt" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(nvt_gro), path(nvt_cpt), path(top, stageAs: 'input.top'), path(itps)
+    tuple val(meta), path(nvt_gro), path(nvt_cpt), path(top, stageAs: 'input.top'), path(itps, stageAs: 'itp_in/*')
 
     output:
     tuple val(meta), path("npt.gro"), path("npt.cpt"), path("topol.top"), path("*.itp"), emit: system
@@ -16,6 +16,7 @@ process NPT {
     def temp      = params.temperature
     """
     cp ${top} topol.top
+    cp itp_in/*.itp .
 
     cat > npt.mdp << MDP_EOF
 define          = -DPOSRES

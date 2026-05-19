@@ -5,7 +5,7 @@ process PRODUCTION {
     publishDir { "${params.outdir}/${meta.id}/prod" }, mode: 'copy'
 
     input:
-    tuple val(meta), path(npt_gro), path(npt_cpt), path(top, stageAs: 'input.top'), path(itps)
+    tuple val(meta), path(npt_gro), path(npt_cpt), path(top, stageAs: 'input.top'), path(itps, stageAs: 'itp_in/*')
 
     output:
     tuple val(meta), path("md.tpr"), path("md.xtc"), emit: traj
@@ -18,6 +18,7 @@ process PRODUCTION {
     def temp       = params.temperature
     """
     cp ${top} topol.top
+    cp itp_in/*.itp .
 
     cat > md.mdp << MDP_EOF
 integrator           = md
