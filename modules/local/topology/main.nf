@@ -2,7 +2,7 @@ process TOPOLOGY {
     tag "${meta.id}"
     label 'process_medium'
 
-    publishDir "${params.outdir}/${meta.id}/topo", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/topo" }, mode: 'copy'
 
     input:
     tuple val(meta), path(complexo_pdb)

@@ -2,7 +2,7 @@ process POSTPROCESS {
     tag "${meta.id}"
     label 'process_medium'
 
-    publishDir "${params.outdir}/${meta.id}/prod", mode: 'copy', overwrite: true
+    publishDir { "${params.outdir}/${meta.id}/prod" }, mode: 'copy', overwrite: true
 
     input:
     tuple val(meta), path(md_tpr), path(md_xtc)

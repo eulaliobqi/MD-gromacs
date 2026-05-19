@@ -2,7 +2,7 @@ process PLOT {
     tag "${meta.id}"
     label 'process_low'
 
-    publishDir "${params.outdir}/${meta.id}/analise", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/analise" }, mode: 'copy'
 
     input:
     tuple val(meta), path(xvg_files), path(lig_ndx)

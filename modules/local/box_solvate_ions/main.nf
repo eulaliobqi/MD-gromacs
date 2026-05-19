@@ -2,7 +2,7 @@ process BOX_SOLVATE_IONS {
     tag "${meta.id}"
     label 'process_medium'
 
-    publishDir "${params.outdir}/${meta.id}/box", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/box" }, mode: 'copy'
 
     input:
     tuple val(meta), path(gro), path(top), path(itps)

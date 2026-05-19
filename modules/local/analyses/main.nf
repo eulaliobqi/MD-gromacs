@@ -2,7 +2,7 @@ process ANALYSES {
     tag "${meta.id}"
     label 'process_medium'
 
-    publishDir "${params.outdir}/${meta.id}/analise", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/analise" }, mode: 'copy'
 
     input:
     tuple val(meta), path(complexo_pdb), path(md_tpr), path(md_fit_xtc)

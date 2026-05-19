@@ -2,7 +2,7 @@ process NVT {
     tag "${meta.id}"
     label 'process_gpu'
 
-    publishDir "${params.outdir}/${meta.id}/nvt", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/nvt" }, mode: 'copy'
 
     input:
     tuple val(meta), path(em_gro), path(top), path(itps)

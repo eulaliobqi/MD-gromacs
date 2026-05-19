@@ -2,7 +2,7 @@ process MINIMIZATION {
     tag "${meta.id}"
     label 'process_gpu'
 
-    publishDir "${params.outdir}/${meta.id}/em", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/em" }, mode: 'copy'
 
     input:
     tuple val(meta), path(ions_gro), path(top), path(itps)
