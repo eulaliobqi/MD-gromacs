@@ -2,7 +2,7 @@ process PRODUCTION {
     tag "${meta.id}"
     label 'process_gpu_long'
 
-    publishDir "${params.outdir}/${meta.id}/prod", mode: 'copy'
+    publishDir { "${params.outdir}/${meta.id}/prod" }, mode: 'copy'
 
     input:
     tuple val(meta), path(npt_gro), path(npt_cpt), path(top), path(itps)
