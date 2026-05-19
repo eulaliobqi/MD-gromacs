@@ -1,0 +1,16 @@
+cd dm_pipeline/
+
+# Exemplo 1: nova tripsina, pH fisiologico
+./dm_pipeline.sh \
+    -r /caminho/tripsina_X.pdb \
+    -l /caminho/peptideo_inibidor.pdb \
+    -p tripsina_X_inib_pH7.4
+
+# Exemplo 2: pH alcalino, simulacao mais longa
+./dm_pipeline.sh \
+    -r tripsina.pdb -l lig.pdb \
+    -p alc_test -H 9.0 -t 200
+
+# Apenas re-rodar analises (sem refazer DM):
+bash run_analyses.sh ~/gromacs/meu_projeto
+python3 plot_results.py --analise-dir ~/gromacs/meu_projeto/analise

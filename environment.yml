@@ -1,0 +1,12 @@
+name: md-gromacs
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - gromacs>=2022
+  - python>=3.10
+  - numpy
+  - matplotlib
+  - mdtraj
+  - nextflow>=23.04
