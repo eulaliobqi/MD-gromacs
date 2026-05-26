@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 nextflow.enable.dsl = 2
 
+include { PREPARE_PH       } from './modules/local/prepare_ph/main.nf'
 include { PREPARE_COMPLEX  } from './modules/local/prepare_complex/main.nf'
 include { TOPOLOGY         } from './modules/local/topology/main.nf'
 include { BOX_SOLVATE_IONS } from './modules/local/box_solvate_ions/main.nf'
@@ -29,7 +30,8 @@ workflow {
         }
         .set { ch_input }
 
-    PREPARE_COMPLEX(ch_input)
+    PREPARE_PH(ch_input)
+    PREPARE_COMPLEX(PREPARE_PH.out.protonated)
     TOPOLOGY(PREPARE_COMPLEX.out.complexo)
     BOX_SOLVATE_IONS(TOPOLOGY.out.topology)
     MINIMIZATION(BOX_SOLVATE_IONS.out.system)

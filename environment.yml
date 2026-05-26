@@ -4,6 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - pdb2pqr>=3.6
   - gromacs=2026.0=*mpi_openmpi_cuda*
   - openmpi
   - gmx_MMPBSA
