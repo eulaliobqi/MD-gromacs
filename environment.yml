@@ -11,6 +11,7 @@ dependencies:
   - matplotlib
   - mdtraj<=1.9.9
   - nextflow>=23.04
+  - ambertools
   - pip
   - pip:
     - pdb2pqr>=3.6
