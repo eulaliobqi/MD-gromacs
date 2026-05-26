@@ -16,7 +16,7 @@ process PREPARE_PH {
     """
     # ── Receptor ──────────────────────────────────────────────────────────────
     pdb2pqr --ff AMBER --ffout AMBER \\
-        --with-ph ${ph} --ph-calc-method propka \\
+        --titration-state-method propka --with-ph ${ph} \\
         --pdb-output receptor_raw.pdb \\
         --nodebump \\
         ${receptor} receptor.pqr
@@ -26,7 +26,7 @@ process PREPARE_PH {
     # ── Ligante (peptídio) ─────────────────────────────────────────────────────
     # PDB2PQR pode falhar em peptídios curtos; usa o original como fallback
     if pdb2pqr --ff AMBER --ffout AMBER \\
-        --with-ph ${ph} --ph-calc-method propka \\
+        --titration-state-method propka --with-ph ${ph} \\
         --pdb-output ligand_raw.pdb \\
         --nodebump \\
         ${ligand} ligand.pqr ; then
