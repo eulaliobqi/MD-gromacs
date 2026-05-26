@@ -9,7 +9,7 @@ dependencies:
   - openmpi
   - numpy
   - matplotlib
-  - mdtraj
+  - mdtraj<=1.9.9
   - nextflow>=23.04
   - pip
   - pip:
