@@ -4,9 +4,9 @@ channels:
   - bioconda
   - defaults
 dependencies:
+  - python=3.11
   - gromacs=2026.0=*mpi_openmpi_cuda*
   - openmpi
-  - python>=3.10
   - numpy
   - matplotlib
   - mdtraj
