@@ -4,12 +4,14 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - pdb2pqr>=3.6
   - gromacs=2026.0=*mpi_openmpi_cuda*
   - openmpi
-  - gmx_MMPBSA
   - python>=3.10
   - numpy
   - matplotlib
   - mdtraj
   - nextflow>=23.04
+  - pip
+  - pip:
+    - pdb2pqr>=3.6
+    - gmx_MMPBSA
