@@ -15,7 +15,7 @@ process MMGBSA {
     script:
     def sys_name     = meta.id
     def total_frames = (params.time_ns as int) * 100
-    def interval     = Math.max(1, (int)(total_frames / 200))
+    def interval     = Math.max(1, total_frames.intdiv(200))
     def titulo       = "${meta.id} — DM ${params.time_ns} ns @ pH ${params.pH} [MM-GBSA]"
     """
     cat > mmgbsa.in << 'MDP_EOF'
