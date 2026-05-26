@@ -11,6 +11,7 @@ include { PRODUCTION       } from './modules/local/production/main.nf'
 include { POSTPROCESS      } from './modules/local/postprocess/main.nf'
 include { ANALYSES         } from './modules/local/analyses/main.nf'
 include { PLOT             } from './modules/local/plot/main.nf'
+include { MMGBSA           } from './modules/local/mmgbsa/main.nf'
 
 workflow {
     if (!params.input) {
@@ -43,4 +44,10 @@ workflow {
 
     ANALYSES(ch_analyses)
     PLOT(ANALYSES.out.xvg)
+
+    // MM-GBSA: junta trajetória pós-processada + ndx das análises
+    ch_mmgbsa = POSTPROCESS.out.fit
+        .join(ANALYSES.out.xvg, by: [0])
+        .map { meta, tpr, xtc, xvgs, ndx -> tuple(meta, tpr, xtc, ndx, xvgs) }
+    MMGBSA(ch_mmgbsa)
 }

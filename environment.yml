@@ -6,6 +6,7 @@ channels:
 dependencies:
   - gromacs=2026.0=*mpi_openmpi_cuda*
   - openmpi
+  - gmx_MMPBSA
   - python>=3.10
   - numpy
   - matplotlib
