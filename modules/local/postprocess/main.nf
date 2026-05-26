@@ -5,7 +5,7 @@ process POSTPROCESS {
     publishDir { "${params.outdir}/${meta.id}/prod" }, mode: 'copy', overwrite: true
 
     input:
-    tuple val(meta), path(md_tpr), path(md_xtc)
+    tuple val(meta), path(md_tpr, stageAs: 'input.tpr'), path(md_xtc)
 
     output:
     tuple val(meta), path("md.tpr"), path("md_fit.xtc"), emit: fit
