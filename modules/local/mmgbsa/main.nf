@@ -32,7 +32,7 @@ saltcon=${params.nacl_conc},
 /
 MDP_EOF
 
-    gmx_MMPBSA -O \\
+    mamba run -n mmgbsa-env gmx_MMPBSA -O \\
         -i mmgbsa.in \\
         -cs ${md_tpr} \\
         -ct ${md_xtc} \\
