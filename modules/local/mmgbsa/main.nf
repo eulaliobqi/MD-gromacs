@@ -32,15 +32,55 @@ saltcon=${params.nacl_conc},
 /
 MDP_EOF
 
-    mamba run -n mmgbsa-env gmx_MMPBSA -O \\
-        -i mmgbsa.in \\
-        -cs ${md_tpr} \\
-        -ct ${md_xtc} \\
-        -ci ${lig_ndx} \\
-        -cg Receptor Ligante \\
-        -o FINAL_RESULTS_MMGBSA.dat \\
-        -eo mmgbsa_results.csv \\
-        -nogui 2>&1 | tee mmgbsa.log
+    # Wrapper Python que intercepta tleap e corrige o bug SS bonds do gmx_MMPBSA.
+    # O bug: indices COM_OUT gerados com offset errado (N_ligante a menos).
+    # Fix: copiar indices dos bonds do REC_OUT para o COM_OUT.
+    mkdir -p bin_patch
+    cat > bin_patch/tleap << 'WEOF'
+#!/usr/bin/env python3
+import sys, os, re, subprocess
+args = sys.argv[1:]
+for i, a in enumerate(args):
+    if a == '-f' and i+1 < len(args):
+        f = args[i+1]
+        if os.path.exists(f):
+            t = open(f).read()
+            rec = re.findall(r'bond REC_OUT[.](\d+)[.]SG REC_OUT[.](\d+)[.]SG', t)
+            com = re.findall(r'bond COM_OUT[.](\d+)[.]SG COM_OUT[.](\d+)[.]SG', t)
+            for w, r in zip(com, rec):
+                t = t.replace('bond COM_OUT.{}.SG COM_OUT.{}.SG'.format(w[0],w[1]),
+                               'bond COM_OUT.{}.SG COM_OUT.{}.SG'.format(r[0],r[1]),1)
+            open(f,'w').write(t)
+        break
+for d in os.environ.get('PATH','').split(':'):
+    if 'bin_patch' in d: continue
+    for name in ('tleap','teLeap'):
+        c = os.path.join(d,name)
+        if os.path.isfile(c) and os.access(c,os.X_OK):
+            sys.exit(subprocess.run([c]+args).returncode)
+sys.exit(1)
+WEOF
+    chmod +x bin_patch/tleap
+
+    # Script de execução: adiciona bin_patch ao PATH antes de chamar gmx_MMPBSA
+    cat > run_mmgbsa.sh << 'RSEOF'
+#!/bin/bash
+set -e
+export PATH="\$PWD/bin_patch:\$PATH"
+gmx_MMPBSA -O \\
+    -i mmgbsa.in \\
+    -cs REPLACE_TPR \\
+    -ct REPLACE_XTC \\
+    -ci REPLACE_NDX \\
+    -cg Receptor Ligante \\
+    -o FINAL_RESULTS_MMGBSA.dat \\
+    -eo mmgbsa_results.csv \\
+    -nogui
+RSEOF
+    sed -i 's|REPLACE_TPR|${md_tpr}|; s|REPLACE_XTC|${md_xtc}|; s|REPLACE_NDX|${lig_ndx}|' run_mmgbsa.sh
+    chmod +x run_mmgbsa.sh
+
+    mamba run -n mmgbsa-env bash run_mmgbsa.sh 2>&1 | tee mmgbsa.log
 
     plot_results.py \\
         --analise-dir . \\
