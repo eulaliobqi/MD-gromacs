@@ -36,7 +36,7 @@ process STABILITY_FILTER {
         {
             echo "=== Relatório de Estabilidade ==="
             echo "Trajetória total        : ${params.time_ns}.0 ns"
-            echo "Início fase estável     : \$(python3 -c "print(${params.time_ns} * ${min_frac})") ns  (\${START_PS} ps)"
+            echo "Início fase estável     : \${START_PS} ps"
             echo "Método                  : fallback (rmsd_backbone.xvg ausente)"
         } > stability_report.txt
     fi

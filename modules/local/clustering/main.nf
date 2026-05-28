@@ -66,7 +66,8 @@ process CLUSTERING {
     echo "Target frames   : ${target_frames}  (${n_cl} clusters × ${fpc} frames)" >> clustering_report.txt
     echo "Stride usado    : \${SKIP}" >> clustering_report.txt
 
-    echo "[CLUSTER] stride=\${SKIP} → ~\$(python3 -c "print(\${STABLE_FRAMES}//${SKIP})") frames para MMGBSA" >&2
+    EST_FRAMES=\$(( \${STABLE_FRAMES} / \${SKIP} ))
+    echo "[CLUSTER] stride=\${SKIP} → ~\${EST_FRAMES} frames para MMGBSA" >&2
 
     echo "System" | ${params.gmx_cmd} trjconv \\
         -s ${md_tpr} \\
