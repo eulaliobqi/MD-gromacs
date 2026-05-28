@@ -12,10 +12,8 @@ include { PRODUCTION       } from './modules/local/production/main.nf'
 include { POSTPROCESS      } from './modules/local/postprocess/main.nf'
 include { ANALYSES         } from './modules/local/analyses/main.nf'
 include { PLOT             } from './modules/local/plot/main.nf'
-include { STABILITY_FILTER } from './modules/local/stability_filter/main.nf'
-include { CLUSTERING       } from './modules/local/clustering/main.nf'
-include { MMGBSA_ROBUST    } from './modules/local/mmgbsa_robust/main.nf'
-include { MMGBSA_INTERPRET } from './modules/local/mmgbsa_interpret/main.nf'
+include { ANALYSES_SASA   } from './modules/local/analyses_sasa/main.nf'
+include { ANALYSES_TRIAD  } from './modules/local/analyses_triad/main.nf'
 
 workflow {
     if (!params.input) {
@@ -50,23 +48,11 @@ workflow {
     ANALYSES(ch_analyses)
     PLOT(ANALYSES.out.xvg)
 
-    // ── Pipeline MM-GBSA robusto ─────────────────────────────────────────────
-    // Etapa 1: junta POSTPROCESS + ANALYSES e filtra a fase estável
-    ch_mmgbsa_prep = POSTPROCESS.out.fit
+    // ── Análises estendidas ────────────────────────────────────────────────────
+    ch_extended = POSTPROCESS.out.fit
         .join(ANALYSES.out.xvg, by: [0])
-        .map { meta, tpr, xtc, xvgs, ndx -> tuple(meta, tpr, xtc, xvgs, ndx) }
+        .map { meta, tpr, xtc, xvgs, ndx -> tuple(meta, tpr, xtc, ndx) }
 
-    STABILITY_FILTER(ch_mmgbsa_prep)
-
-    // Etapa 2: clustering conformacional + subsampling
-    CLUSTERING(STABILITY_FILTER.out.stable)
-
-    // Etapa 3: validação + gmx_MMPBSA + decomposição por resíduo
-    MMGBSA_ROBUST(CLUSTERING.out.for_mmgbsa)
-
-    // Etapa 4: interpretação automática + painel de figuras
-    ch_interpret = MMGBSA_ROBUST.out.results
-        .join(STABILITY_FILTER.out.report, by: [0])
-        .map { meta, csv, dat, decomp, stab -> tuple(meta, csv, dat, decomp, stab) }
-    MMGBSA_INTERPRET(ch_interpret)
+    ANALYSES_SASA(ch_extended)
+    ANALYSES_TRIAD(ch_extended)
 }
