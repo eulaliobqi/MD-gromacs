@@ -10,6 +10,8 @@
 #       ACR157-GORE4 100 0.15
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLOT_SCRIPT="${SCRIPT_DIR}/../bin/plot_results.py"
 
 NF_WORK="${1:?Informe o diretório de trabalho Nextflow do MMGBSA}"
 SYS_NAME="${2:?Informe o nome do sistema (ex: ACR157-GORE4)}"
@@ -101,7 +103,7 @@ gmx_MMPBSA -O \
 if [ -f FINAL_RESULTS_MMGBSA.dat ]; then
     echo "=== gmx_MMPBSA concluído com sucesso ==="
     echo "Gerando painel de resultados..."
-    mamba run -n md-gromacs plot_results.py \
+    python3 "${PLOT_SCRIPT}" \
         --analise-dir . \
         --titulo "${SYS_NAME} — DM ${TIME_NS} ns [MM-GBSA]" \
         --mmgbsa-csv mmgbsa_results.csv \
