@@ -84,14 +84,10 @@ MEOF
     mkdir -p bin_patch
     cat > bin_patch/tleap << 'WEOF'
 #!/usr/bin/env python3
-"""
-Wrapper tleap para gmx_MMPBSA:
-- Corrige índices SS bonds em COM_OUT (bug gmx_MMPBSA <= 1.6.x)
-  O bug: índices para COM_OUT são gerados com offset errado quando o ligante
-  é inserido antes do receptor na topologia do complexo. O fix replica os
-  índices corretos do REC_OUT para o COM_OUT.
-- Registra todo o processo em tleap_wrapper.log para diagnóstico.
-"""
+# Wrapper tleap para gmx_MMPBSA 1.6.x
+# Corrige bug: indices SS bonds em COM_OUT gerados com offset errado.
+# O fix copia os indices corretos de REC_OUT para COM_OUT.
+# Registra tudo em tleap_wrapper.log para diagnostico.
 import sys, os, re, subprocess
 
 LOG = os.path.join(os.getcwd(), 'tleap_wrapper.log')
