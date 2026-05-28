@@ -62,25 +62,20 @@ sys.exit(1)
 WEOF
     chmod +x bin_patch/tleap
 
-    # Script de execução: adiciona bin_patch ao PATH antes de chamar gmx_MMPBSA
-    cat > run_mmgbsa.sh << 'RSEOF'
-#!/bin/bash
-set -e
-export PATH="\$PWD/bin_patch:\$PATH"
+    # Executa gmx_MMPBSA com bin_patch no PATH para que o wrapper intercepte tleap
+    mamba run -n mmgbsa-env bash -c "
+export PATH=\$PWD/bin_patch:\\\$PATH
 gmx_MMPBSA -O \\
     -i mmgbsa.in \\
-    -cs REPLACE_TPR \\
-    -ct REPLACE_XTC \\
-    -ci REPLACE_NDX \\
+    -cs ${md_tpr} \\
+    -ct ${md_xtc} \\
+    -ci ${lig_ndx} \\
     -cg Receptor Ligante \\
     -o FINAL_RESULTS_MMGBSA.dat \\
     -eo mmgbsa_results.csv \\
     -nogui
-RSEOF
-    sed -i 's|REPLACE_TPR|${md_tpr}|; s|REPLACE_XTC|${md_xtc}|; s|REPLACE_NDX|${lig_ndx}|' run_mmgbsa.sh
-    chmod +x run_mmgbsa.sh
-
-    mamba run -n mmgbsa-env bash run_mmgbsa.sh 2>&1 | tee mmgbsa.log
+" 2>&1 | tee mmgbsa.log
+    test -f FINAL_RESULTS_MMGBSA.dat || { echo "gmx_MMPBSA falhou — veja mmgbsa.log"; exit 1; }
 
     plot_results.py \\
         --analise-dir . \\
