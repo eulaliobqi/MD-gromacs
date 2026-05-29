@@ -170,9 +170,10 @@ def main():
         "hbond":        load_xvg(os.path.join(D, "hbond.xvg")),
         "sasa_prot":    load_xvg(os.path.join(D, "sasa_protein.xvg")),
         "sasa_lig":     load_xvg(os.path.join(D, "sasa_ligante.xvg")),
-        "dist_ser":     load_xvg(os.path.join(D, "dist_ser.xvg")),
-        "dist_his":     load_xvg(os.path.join(D, "dist_his.xvg")),
-        "dist_asp":     load_xvg(os.path.join(D, "dist_asp.xvg")),
+        "dist_r1":      load_xvg(os.path.join(D, "dist_r1.xvg")),
+        "dist_r2":      load_xvg(os.path.join(D, "dist_r2.xvg")),
+        "dist_r3":      load_xvg(os.path.join(D, "dist_r3.xvg")),
+        "dist_r4":      load_xvg(os.path.join(D, "dist_r4.xvg")),
     }
 
     mmgbsa = load_mmgbsa_csv(args.mmgbsa_csv) if args.mmgbsa_csv else None
@@ -182,12 +183,12 @@ def main():
     triad_info_path = os.path.join(D, "triad_info.txt")
     if os.path.exists(triad_info_path):
         labels_raw = [l.strip() for l in open(triad_info_path) if l.strip()]
-        triad_labels = labels_raw[:3] if len(labels_raw) >= 3 else labels_raw + ["?"] * (3 - len(labels_raw))
+        triad_labels = (labels_raw + ["?"] * 4)[:4]
     else:
-        triad_labels = ["Res1", "Res2", "Res3"]
+        triad_labels = ["Res1", "Res2", "Res3", "S1"]
 
     has_sasa  = xvg["sasa_prot"] is not None or xvg["sasa_lig"] is not None
-    has_triad = any(xvg[k] is not None for k in ("dist_ser", "dist_his", "dist_asp"))
+    has_triad = any(xvg[k] is not None for k in ("dist_r1", "dist_r2", "dist_r3", "dist_r4"))
 
     nrows = 3 + has_sasa + has_triad + (2 if has_mmgbsa else 0)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, nrows * 4))
@@ -241,9 +242,10 @@ def main():
     # Row Tríade
     if has_triad:
         ax_tri = axes[next_row, 0]
-        cores_triad = {"dist_ser": (triad_labels[0], "forestgreen"),
-                       "dist_his": (triad_labels[1], "royalblue"),
-                       "dist_asp": (triad_labels[2], "crimson")}
+        cores_triad = {"dist_r1": (triad_labels[0], "forestgreen"),
+                       "dist_r2": (triad_labels[1], "royalblue"),
+                       "dist_r3": (triad_labels[2], "crimson"),
+                       "dist_r4": (triad_labels[3], "darkorange")}
         for key, (label, cor) in cores_triad.items():
             if xvg[key] is not None:
                 ax_tri.plot(xvg[key][:, 0], xvg[key][:, 1],
@@ -336,9 +338,10 @@ def main():
         plt.close()
 
     # Tríade individual
-    triad_keys = [("dist_ser", triad_labels[0], "forestgreen"),
-                  ("dist_his", triad_labels[1], "royalblue"),
-                  ("dist_asp", triad_labels[2], "crimson")]
+    triad_keys = [("dist_r1", triad_labels[0], "forestgreen"),
+                  ("dist_r2", triad_labels[1], "royalblue"),
+                  ("dist_r3", triad_labels[2], "crimson"),
+                  ("dist_r4", triad_labels[3], "darkorange")]
     any_triad = any(xvg[k] is not None for k, *_ in triad_keys)
     if any_triad:
         fig, ax = plt.subplots(figsize=(9, 5))

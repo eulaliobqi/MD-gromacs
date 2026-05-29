@@ -8,61 +8,57 @@ process ANALYSES_TRIAD {
     tuple val(meta), path(md_tpr), path(md_fit_xtc), path(lig_ndx)
 
     output:
-    tuple val(meta), path("dist_ser.xvg"), path("dist_his.xvg"), path("dist_asp.xvg"), emit: triad
+    tuple val(meta), path("dist_r1.xvg"), path("dist_r2.xvg"),
+                     path("dist_r3.xvg"), path("dist_r4.xvg"), emit: triad
     tuple val(meta), path("triad_info.txt"), emit: info
 
     script:
     def r1 = meta.triad_1
     def r2 = meta.triad_2
     def r3 = meta.triad_3
+    def r4 = meta.triad_4
     """
     echo "=== ANALYSES_TRIAD: ${meta.id} ===" >&2
-    echo "Resíduos de interesse: ${r1} ${r2} ${r3}" >&2
+    echo "Resíduos de interesse: ${r1} ${r2} ${r3} ${r4}" >&2
 
-    # Grava rótulos para o plot_results.py
-    printf '${r1}\\n${r2}\\n${r3}\\n' > triad_info.txt
+    # Grava rótulos para plot_results.py
+    printf '${r1}\\n${r2}\\n${r3}\\n${r4}\\n' > triad_info.txt
 
-    # Conta grupos existentes no lig.ndx para determinar próximo índice disponível
+    # Conta grupos existentes no lig.ndx para determinar próximos índices
     N_CURR=\$(echo q | ${params.gmx_cmd} make_ndx \\
         -f ${md_tpr} -n ${lig_ndx} -o _tmp_count.ndx 2>&1 \\
         | grep -cE "^ *[0-9]+ +[A-Za-z]")
     rm -f _tmp_count.ndx
-    RES1_IDX=\${N_CURR}
-    RES2_IDX=\$((N_CURR + 1))
-    RES3_IDX=\$((N_CURR + 2))
+    R1_IDX=\${N_CURR}
+    R2_IDX=\$((N_CURR + 1))
+    R3_IDX=\$((N_CURR + 2))
+    R4_IDX=\$((N_CURR + 3))
 
-    # Adiciona grupos dos resíduos de interesse ao ndx
+    # Adiciona os 4 resíduos ao ndx
     ${params.gmx_cmd} make_ndx -f ${md_tpr} -n ${lig_ndx} -o triad.ndx << MNDX
 r ${r1}
-name \${RES1_IDX} Res1_Cat
+name \${R1_IDX} Res1_Cat
 r ${r2}
-name \${RES2_IDX} Res2_Cat
+name \${R2_IDX} Res2_Cat
 r ${r3}
-name \${RES3_IDX} Res3_Cat
+name \${R3_IDX} Res3_Cat
+r ${r4}
+name \${R4_IDX} Res4_Cat
 q
 MNDX
 
-    # Distância mínima ligante–resíduo 1
     printf 'Ligante\\nRes1_Cat\\n' | ${params.gmx_cmd} mindist \\
-        -s ${md_tpr} -f ${md_fit_xtc} \\
-        -n triad.ndx \\
-        -od dist_ser.xvg \\
-        -tu ns
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -od dist_r1.xvg -tu ns
 
-    # Distância mínima ligante–resíduo 2
     printf 'Ligante\\nRes2_Cat\\n' | ${params.gmx_cmd} mindist \\
-        -s ${md_tpr} -f ${md_fit_xtc} \\
-        -n triad.ndx \\
-        -od dist_his.xvg \\
-        -tu ns
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -od dist_r2.xvg -tu ns
 
-    # Distância mínima ligante–resíduo 3
     printf 'Ligante\\nRes3_Cat\\n' | ${params.gmx_cmd} mindist \\
-        -s ${md_tpr} -f ${md_fit_xtc} \\
-        -n triad.ndx \\
-        -od dist_asp.xvg \\
-        -tu ns
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -od dist_r3.xvg -tu ns
 
-    echo "[OK] Distâncias resíduos-chave concluídas para ${meta.id}" >&2
+    printf 'Ligante\\nRes4_Cat\\n' | ${params.gmx_cmd} mindist \\
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -od dist_r4.xvg -tu ns
+
+    echo "[OK] Distâncias concluídas para ${meta.id}" >&2
     """
 }

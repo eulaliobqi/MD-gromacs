@@ -41,7 +41,8 @@ workflow {
                 [id: row.sample_id],
                 row.triad_1 ?: params.triad_1,
                 row.triad_2 ?: params.triad_2,
-                row.triad_3 ?: params.triad_3
+                row.triad_3 ?: params.triad_3,
+                row.triad_4 ?: params.triad_4
             )
         }
         .set { ch_triad_params }
@@ -73,8 +74,8 @@ workflow {
     // Injeta resíduos de interesse no canal só para ANALYSES_TRIAD
     ch_triad_input = ch_extended
         .join(ch_triad_params, by: [0])
-        .map { meta, tpr, xtc, ndx, t1, t2, t3 ->
-            tuple(meta + [triad_1: t1, triad_2: t2, triad_3: t3], tpr, xtc, ndx)
+        .map { meta, tpr, xtc, ndx, t1, t2, t3, t4 ->
+            tuple(meta + [triad_1: t1, triad_2: t2, triad_3: t3, triad_4: t4], tpr, xtc, ndx)
         }
 
     ANALYSES_TRIAD(ch_triad_input)
