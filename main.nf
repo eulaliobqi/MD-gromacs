@@ -24,7 +24,12 @@ workflow {
         .fromPath(params.input, checkIfExists: true)
         .splitCsv(header: true, strip: true)
         .map { row ->
-            def meta     = [id: row.sample_id]
+            def meta = [
+                id:      row.sample_id,
+                triad_1: row.triad_1 ?: params.triad_1,
+                triad_2: row.triad_2 ?: params.triad_2,
+                triad_3: row.triad_3 ?: params.triad_3,
+            ]
             def receptor = file(row.receptor, checkIfExists: true)
             def ligand   = file(row.ligand,   checkIfExists: true)
             tuple(meta, receptor, ligand)

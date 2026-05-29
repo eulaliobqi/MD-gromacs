@@ -9,56 +9,60 @@ process ANALYSES_TRIAD {
 
     output:
     tuple val(meta), path("dist_ser.xvg"), path("dist_his.xvg"), path("dist_asp.xvg"), emit: triad
+    tuple val(meta), path("triad_info.txt"), emit: info
 
     script:
-    def triad_ser = params.triad_ser
-    def triad_his = params.triad_his
-    def triad_asp = params.triad_asp
+    def r1 = meta.triad_1
+    def r2 = meta.triad_2
+    def r3 = meta.triad_3
     """
     echo "=== ANALYSES_TRIAD: ${meta.id} ===" >&2
-    echo "Tríade catalítica: Ser${triad_ser} His${triad_his} Asp${triad_asp}" >&2
+    echo "Resíduos de interesse: ${r1} ${r2} ${r3}" >&2
+
+    # Grava rótulos para o plot_results.py
+    printf '${r1}\\n${r2}\\n${r3}\\n' > triad_info.txt
 
     # Conta grupos existentes no lig.ndx para determinar próximo índice disponível
     N_CURR=\$(echo q | ${params.gmx_cmd} make_ndx \\
         -f ${md_tpr} -n ${lig_ndx} -o _tmp_count.ndx 2>&1 \\
         | grep -cE "^ *[0-9]+ +[A-Za-z]")
     rm -f _tmp_count.ndx
-    SER_IDX=\${N_CURR}
-    HIS_IDX=\$((N_CURR + 1))
-    ASP_IDX=\$((N_CURR + 2))
+    RES1_IDX=\${N_CURR}
+    RES2_IDX=\$((N_CURR + 1))
+    RES3_IDX=\$((N_CURR + 2))
 
-    # Adiciona grupos da tríade ao ndx
+    # Adiciona grupos dos resíduos de interesse ao ndx
     ${params.gmx_cmd} make_ndx -f ${md_tpr} -n ${lig_ndx} -o triad.ndx << MNDX
-r ${triad_ser}
-name \${SER_IDX} Ser_Cat
-r ${triad_his}
-name \${HIS_IDX} His_Cat
-r ${triad_asp}
-name \${ASP_IDX} Asp_Cat
+r ${r1}
+name \${RES1_IDX} Res1_Cat
+r ${r2}
+name \${RES2_IDX} Res2_Cat
+r ${r3}
+name \${RES3_IDX} Res3_Cat
 q
 MNDX
 
-    # Distância mínima ligante–Serina catalítica
-    printf 'Ligante\\nSer_Cat\\n' | ${params.gmx_cmd} mindist \\
+    # Distância mínima ligante–resíduo 1
+    printf 'Ligante\\nRes1_Cat\\n' | ${params.gmx_cmd} mindist \\
         -s ${md_tpr} -f ${md_fit_xtc} \\
         -n triad.ndx \\
         -od dist_ser.xvg \\
         -tu ns
 
-    # Distância mínima ligante–Histidina catalítica
-    printf 'Ligante\\nHis_Cat\\n' | ${params.gmx_cmd} mindist \\
+    # Distância mínima ligante–resíduo 2
+    printf 'Ligante\\nRes2_Cat\\n' | ${params.gmx_cmd} mindist \\
         -s ${md_tpr} -f ${md_fit_xtc} \\
         -n triad.ndx \\
         -od dist_his.xvg \\
         -tu ns
 
-    # Distância mínima ligante–Aspartato catalítico
-    printf 'Ligante\\nAsp_Cat\\n' | ${params.gmx_cmd} mindist \\
+    # Distância mínima ligante–resíduo 3
+    printf 'Ligante\\nRes3_Cat\\n' | ${params.gmx_cmd} mindist \\
         -s ${md_tpr} -f ${md_fit_xtc} \\
         -n triad.ndx \\
         -od dist_asp.xvg \\
         -tu ns
 
-    echo "[OK] Distâncias tríade concluídas para ${meta.id}" >&2
+    echo "[OK] Distâncias resíduos-chave concluídas para ${meta.id}" >&2
     """
 }

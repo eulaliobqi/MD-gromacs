@@ -178,6 +178,14 @@ def main():
     mmgbsa = load_mmgbsa_csv(args.mmgbsa_csv) if args.mmgbsa_csv else None
     has_mmgbsa = mmgbsa is not None
 
+    # Rótulos da tríade — lê triad_info.txt se existir (gerado por ANALYSES_TRIAD)
+    triad_info_path = os.path.join(D, "triad_info.txt")
+    if os.path.exists(triad_info_path):
+        labels_raw = [l.strip() for l in open(triad_info_path) if l.strip()]
+        triad_labels = labels_raw[:3] if len(labels_raw) >= 3 else labels_raw + ["?"] * (3 - len(labels_raw))
+    else:
+        triad_labels = ["Res1", "Res2", "Res3"]
+
     has_sasa  = xvg["sasa_prot"] is not None or xvg["sasa_lig"] is not None
     has_triad = any(xvg[k] is not None for k in ("dist_ser", "dist_his", "dist_asp"))
 
@@ -233,9 +241,9 @@ def main():
     # Row Tríade
     if has_triad:
         ax_tri = axes[next_row, 0]
-        cores_triad = {"dist_ser": ("Ser195", "forestgreen"),
-                       "dist_his": ("His57",  "royalblue"),
-                       "dist_asp": ("Asp102", "crimson")}
+        cores_triad = {"dist_ser": (triad_labels[0], "forestgreen"),
+                       "dist_his": (triad_labels[1], "royalblue"),
+                       "dist_asp": (triad_labels[2], "crimson")}
         for key, (label, cor) in cores_triad.items():
             if xvg[key] is not None:
                 ax_tri.plot(xvg[key][:, 0], xvg[key][:, 1],
@@ -328,9 +336,9 @@ def main():
         plt.close()
 
     # Tríade individual
-    triad_keys = [("dist_ser", "Ser195", "forestgreen"),
-                  ("dist_his", "His57",  "royalblue"),
-                  ("dist_asp", "Asp102", "crimson")]
+    triad_keys = [("dist_ser", triad_labels[0], "forestgreen"),
+                  ("dist_his", triad_labels[1], "royalblue"),
+                  ("dist_asp", triad_labels[2], "crimson")]
     any_triad = any(xvg[k] is not None for k, *_ in triad_keys)
     if any_triad:
         fig, ax = plt.subplots(figsize=(9, 5))
