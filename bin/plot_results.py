@@ -162,18 +162,26 @@ def main():
 
     D = args.analise_dir
     xvg = {
-        "rmsd_bb":  load_xvg(os.path.join(D, "rmsd_backbone.xvg")),
-        "rmsd_lig": load_xvg(os.path.join(D, "rmsd_ligante.xvg")),
-        "rmsf":     load_xvg(os.path.join(D, "rmsf_residuos.xvg")),
-        "rg":       load_xvg(os.path.join(D, "gyrate.xvg")),
-        "ncont":    load_xvg(os.path.join(D, "numcont.xvg")),
-        "hbond":    load_xvg(os.path.join(D, "hbond.xvg")),
+        "rmsd_bb":      load_xvg(os.path.join(D, "rmsd_backbone.xvg")),
+        "rmsd_lig":     load_xvg(os.path.join(D, "rmsd_ligante.xvg")),
+        "rmsf":         load_xvg(os.path.join(D, "rmsf_residuos.xvg")),
+        "rg":           load_xvg(os.path.join(D, "gyrate.xvg")),
+        "ncont":        load_xvg(os.path.join(D, "numcont.xvg")),
+        "hbond":        load_xvg(os.path.join(D, "hbond.xvg")),
+        "sasa_prot":    load_xvg(os.path.join(D, "sasa_protein.xvg")),
+        "sasa_lig":     load_xvg(os.path.join(D, "sasa_ligante.xvg")),
+        "dist_ser":     load_xvg(os.path.join(D, "dist_ser.xvg")),
+        "dist_his":     load_xvg(os.path.join(D, "dist_his.xvg")),
+        "dist_asp":     load_xvg(os.path.join(D, "dist_asp.xvg")),
     }
 
     mmgbsa = load_mmgbsa_csv(args.mmgbsa_csv) if args.mmgbsa_csv else None
     has_mmgbsa = mmgbsa is not None
 
-    nrows = 4 if has_mmgbsa else 3
+    has_sasa  = xvg["sasa_prot"] is not None or xvg["sasa_lig"] is not None
+    has_triad = any(xvg[k] is not None for k in ("dist_ser", "dist_his", "dist_asp"))
+
+    nrows = 3 + has_sasa + has_triad + (2 if has_mmgbsa else 0)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, nrows * 4))
     fig.suptitle(args.titulo, fontsize=14, fontweight='bold')
 
@@ -195,10 +203,78 @@ def main():
     plot_line(axes[2, 1], xvg["hbond"],    "N. H-bonds", "indianred",
               "Pontes de hidrogênio receptor–ligante")
 
-    # Row 4 — MM-GBSA (optional)
+    next_row = 3
+
+    # Row SASA
+    if has_sasa:
+        ax_sasa = axes[next_row, 0]
+        if xvg["sasa_prot"] is not None:
+            ax_sasa.plot(xvg["sasa_prot"][:, 0], xvg["sasa_prot"][:, 1],
+                         lw=0.8, color="steelblue", label="Receptor")
+        if xvg["sasa_lig"] is not None:
+            ax2 = ax_sasa.twinx()
+            ax2.plot(xvg["sasa_lig"][:, 0], xvg["sasa_lig"][:, 1],
+                     lw=0.8, color="tomato", label="Ligante")
+            ax2.set_ylabel("SASA ligante (nm²)", color="tomato")
+            ax2.tick_params(axis='y', labelcolor='tomato')
+            ax2.legend(loc='upper right', fontsize=8)
+        ax_sasa.set_xlabel("Tempo (ns)")
+        ax_sasa.set_ylabel("SASA receptor (nm²)", color="steelblue")
+        ax_sasa.tick_params(axis='y', labelcolor='steelblue')
+        ax_sasa.set_title("Área Acessível ao Solvente (SASA)")
+        ax_sasa.legend(loc='upper left', fontsize=8)
+        ax_sasa.grid(alpha=0.3)
+
+        # SASA ligante individual no col 1
+        plot_line(axes[next_row, 1], xvg["sasa_lig"], "SASA (nm²)", "tomato",
+                  "SASA do Ligante (enterramento)")
+        next_row += 1
+
+    # Row Tríade
+    if has_triad:
+        ax_tri = axes[next_row, 0]
+        cores_triad = {"dist_ser": ("Ser195", "forestgreen"),
+                       "dist_his": ("His57",  "royalblue"),
+                       "dist_asp": ("Asp102", "crimson")}
+        for key, (label, cor) in cores_triad.items():
+            if xvg[key] is not None:
+                ax_tri.plot(xvg[key][:, 0], xvg[key][:, 1],
+                            lw=0.8, color=cor, label=label, alpha=0.85)
+        ax_tri.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
+        ax_tri.set_xlabel("Tempo (ns)")
+        ax_tri.set_ylabel("Distância mínima (nm)")
+        ax_tri.set_title("Distâncias à Tríade Catalítica")
+        ax_tri.legend(fontsize=8)
+        ax_tri.grid(alpha=0.3)
+
+        # média por resíduo da tríade como barras no col 1
+        ax_bar = axes[next_row, 1]
+        labels_bar, means_bar, stds_bar, colors_bar = [], [], [], []
+        for key, (label, cor) in cores_triad.items():
+            if xvg[key] is not None:
+                labels_bar.append(label)
+                means_bar.append(xvg[key][:, 1].mean())
+                stds_bar.append(xvg[key][:, 1].std())
+                colors_bar.append(cor)
+        if labels_bar:
+            bars = ax_bar.bar(labels_bar, means_bar, yerr=stds_bar,
+                              color=colors_bar, alpha=0.8, capsize=5,
+                              edgecolor='black', linewidth=0.5)
+            ax_bar.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
+            for bar, m in zip(bars, means_bar):
+                ax_bar.text(bar.get_x() + bar.get_width() / 2,
+                            bar.get_height() + 0.01,
+                            f"{m:.3f} nm", ha='center', fontsize=9)
+            ax_bar.set_ylabel("Distância média (nm)")
+            ax_bar.set_title("Ocupação Média da Tríade Catalítica\n(média ± DP)")
+            ax_bar.legend(fontsize=8)
+            ax_bar.grid(alpha=0.3, axis='y')
+        next_row += 1
+
+    # Row MM-GBSA (optional)
     if has_mmgbsa:
-        plot_mmgbsa_total(axes[3, 0], mmgbsa)
-        plot_mmgbsa_components(axes[3, 1], mmgbsa)
+        plot_mmgbsa_total(axes[next_row, 0], mmgbsa)
+        plot_mmgbsa_components(axes[next_row, 1], mmgbsa)
 
     plt.tight_layout()
     out = os.path.join(D, args.output)
@@ -232,6 +308,44 @@ def main():
         plot_rmsf(ax, xvg["rmsf"])
         plt.tight_layout()
         plt.savefig(os.path.join(D, "rmsf.png"), dpi=150, bbox_inches='tight')
+        plt.close()
+
+    # SASA individual
+    if xvg["sasa_lig"] is not None:
+        fig, ax = plt.subplots(figsize=(9, 5))
+        plot_line(ax, xvg["sasa_lig"], "SASA (nm²)", "tomato",
+                  "SASA do Ligante no Complexo")
+        plt.tight_layout()
+        plt.savefig(os.path.join(D, "sasa_ligante.png"), dpi=150, bbox_inches='tight')
+        plt.close()
+
+    if xvg["sasa_prot"] is not None:
+        fig, ax = plt.subplots(figsize=(9, 5))
+        plot_line(ax, xvg["sasa_prot"], "SASA (nm²)", "steelblue",
+                  "SASA do Receptor")
+        plt.tight_layout()
+        plt.savefig(os.path.join(D, "sasa_protein.png"), dpi=150, bbox_inches='tight')
+        plt.close()
+
+    # Tríade individual
+    triad_keys = [("dist_ser", "Ser195", "forestgreen"),
+                  ("dist_his", "His57",  "royalblue"),
+                  ("dist_asp", "Asp102", "crimson")]
+    any_triad = any(xvg[k] is not None for k, *_ in triad_keys)
+    if any_triad:
+        fig, ax = plt.subplots(figsize=(9, 5))
+        for key, label, cor in triad_keys:
+            if xvg[key] is not None:
+                ax.plot(xvg[key][:, 0], xvg[key][:, 1],
+                        lw=0.8, color=cor, label=label)
+        ax.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
+        ax.set_xlabel("Tempo (ns)")
+        ax.set_ylabel("Distância mínima (nm)")
+        ax.set_title("Distâncias à Tríade Catalítica")
+        ax.legend()
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(os.path.join(D, "triad_distances.png"), dpi=150, bbox_inches='tight')
         plt.close()
 
     print("Pronto.")
