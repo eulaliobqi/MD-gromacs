@@ -20,21 +20,31 @@ workflow {
         error "Informe o samplesheet: --input samplesheet.csv"
     }
 
+    // Canal principal — meta sem campos de tríade para preservar cache upstream
     Channel
         .fromPath(params.input, checkIfExists: true)
         .splitCsv(header: true, strip: true)
         .map { row ->
-            def meta = [
-                id:      row.sample_id,
-                triad_1: row.triad_1 ?: params.triad_1,
-                triad_2: row.triad_2 ?: params.triad_2,
-                triad_3: row.triad_3 ?: params.triad_3,
-            ]
+            def meta     = [id: row.sample_id]
             def receptor = file(row.receptor, checkIfExists: true)
             def ligand   = file(row.ligand,   checkIfExists: true)
             tuple(meta, receptor, ligand)
         }
         .set { ch_input }
+
+    // Canal de resíduos de interesse — injetado apenas em ANALYSES_TRIAD
+    Channel
+        .fromPath(params.input, checkIfExists: true)
+        .splitCsv(header: true, strip: true)
+        .map { row ->
+            tuple(
+                [id: row.sample_id],
+                row.triad_1 ?: params.triad_1,
+                row.triad_2 ?: params.triad_2,
+                row.triad_3 ?: params.triad_3
+            )
+        }
+        .set { ch_triad_params }
 
     PREPARE_PH(ch_input)
     PREPARE_COMPLEX(PREPARE_PH.out.protonated)
@@ -59,5 +69,13 @@ workflow {
         .map { meta, tpr, xtc, xvgs, ndx -> tuple(meta, tpr, xtc, ndx) }
 
     ANALYSES_SASA(ch_extended)
-    ANALYSES_TRIAD(ch_extended)
+
+    // Injeta resíduos de interesse no canal só para ANALYSES_TRIAD
+    ch_triad_input = ch_extended
+        .join(ch_triad_params, by: [0])
+        .map { meta, tpr, xtc, ndx, t1, t2, t3 ->
+            tuple(meta + [triad_1: t1, triad_2: t2, triad_3: t3], tpr, xtc, ndx)
+        }
+
+    ANALYSES_TRIAD(ch_triad_input)
 }
