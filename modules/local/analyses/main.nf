@@ -69,6 +69,20 @@ EOF
         -s ${md_tpr} -f ${md_fit_xtc} \\
         -n lig.ndx -num hbond.xvg -tu ns
 
+    # SASA do receptor (exposição da superfície ao longo do tempo)
+    ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} \\
+        -n lig.ndx \\
+        -surface 'Protein' -output 'Protein' \\
+        -o sasa_protein.xvg -tu ns
+
+    # SASA do ligante (valores baixos = peptídeo enterrado na interface)
+    ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} \\
+        -n lig.ndx \\
+        -surface 'Ligante' -output 'Ligante' \\
+        -o sasa_ligante.xvg -tu ns
+
     echo "[OK] Análises concluídas para ${meta.id}"
     """
 }

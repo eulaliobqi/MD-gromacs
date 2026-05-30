@@ -38,10 +38,11 @@ MDP_EOF
         -p topol.top -o ions.tpr \\
         -maxwarn ${params.maxwarn}
 
-    # Adiciona NaCl ${params.nacl_conc} M + neutralização
+    # Adiciona íons ${params.cation}Cl ${params.nacl_conc} M + neutralização
+    # K+ para lepidópteros (hemolínfa dominada por K+); usar NA para mamíferos
     echo "SOL" | ${params.gmx_cmd} genion \\
         -s ions.tpr -o ions.gro \\
-        -p topol.top -pname NA -nname CL \\
+        -p topol.top -pname ${params.cation} -nname CL \\
         -neutral -conc ${params.nacl_conc}
     """
 }

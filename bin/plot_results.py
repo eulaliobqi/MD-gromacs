@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Gera painel de figuras a partir dos .xvg do GROMACS e (opcionalmente)
-dos resultados MM-GBSA do gmx_MMPBSA.
+Gera painel de figuras a partir dos .xvg do GROMACS.
 
-Saídas:
-  painel_completo.png  — 6 painéis (sem MMGBSA)
-  painel_final.png     — 8 painéis (com MMGBSA, via --mmgbsa-csv)
-  + 1 PNG individual por métrica
+Todos os gráficos de série temporal mostram:
+  - traço bruto (leve, transparente)
+  - média móvel (linha sólida, janela configurável via --window-ns)
+  - banda ±1 desvio padrão (área sombreada)
 
 Uso:
-  plot_results.py --analise-dir <dir> [--titulo T] [--mmgbsa-csv F] [--output F]
+  plot_results.py --analise-dir <dir> [--titulo T] [--window-ns N] [--mmgbsa-csv F]
 """
 import argparse, os, sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-import matplotlib.gridspec as gridspec
 
-mpl.rcParams['font.size'] = 10
-mpl.rcParams['axes.titlesize'] = 11
+mpl.rcParams.update({
+    'font.size':       10,
+    'axes.titlesize':  11,
+    'axes.labelsize':  10,
+    'legend.fontsize':  8,
+    'figure.dpi':     150,
+})
 
 
 # ── Leitores ──────────────────────────────────────────────────────────────────
@@ -39,7 +42,6 @@ def load_xvg(path):
 
 
 def load_mmgbsa_csv(path):
-    """Lê o CSV do gmx_MMPBSA; retorna dict {colname: array} ou None."""
     if not path or not os.path.exists(path):
         return None
     try:
@@ -62,78 +64,202 @@ def load_mmgbsa_csv(path):
         return None
 
 
-# ── Helpers de plot ───────────────────────────────────────────────────────────
+# ── Estatísticas de janela deslizante (numpy puro, O(n)) ──────────────────────
 
-def plot_line(ax, data, ylabel, color, title=None, hline=None, xlabel="Tempo (ns)"):
+def rolling_stats(values, window):
+    """Média móvel e desvio padrão por janela centrada. Sem dependências extras."""
+    n   = len(values)
+    w   = max(1, min(window, n))
+    v   = values.astype(float)
+    # padding com borda para não distorcer extremos
+    pad  = w // 2
+    vp   = np.pad(v, (pad, w - pad - 1), mode='edge')
+    # cumsum para média eficiente
+    cs   = np.cumsum(np.insert(vp, 0, 0.0))
+    mean = (cs[w:] - cs[:-w]) / w
+    cs2  = np.cumsum(np.insert(vp ** 2, 0, 0.0))
+    var  = (cs2[w:] - cs2[:-w]) / w - mean ** 2
+    std  = np.sqrt(np.maximum(var, 0.0))
+    return mean[:n], std[:n]
+
+
+# ── Helpers de plotagem ────────────────────────────────────────────────────────
+
+def _missing(ax):
+    ax.text(0.5, 0.5, "(arquivo não encontrado)", ha='center', va='center',
+            transform=ax.transAxes, fontsize=9, color='gray')
+    ax.set_xticks([]); ax.set_yticks([])
+
+
+def plot_line(ax, data, ylabel, color, title=None, hline=None,
+              xlabel="Tempo (ns)", window_ns=5.0):
+    """Linha temporal com média móvel e banda ±1 DP."""
     if data is None:
-        ax.text(0.5, 0.5, "(arquivo não encontrado)", ha='center', va='center',
-                transform=ax.transAxes, fontsize=9, color='gray')
-        ax.set_xticks([])
-        ax.set_yticks([])
-        return
-    ax.plot(data[:, 0], data[:, 1], lw=0.8, color=color)
+        _missing(ax); return
+
+    t      = data[:, 0]
+    values = data[:, 1]
+    media  = values.mean()
+    sdg    = values.std()
+
+    dt     = float(t[1] - t[0]) if len(t) > 1 else 0.01
+    window = max(3, int(window_ns / dt))
+
+    rm, rs = rolling_stats(values, window)
+
+    # traço bruto
+    ax.plot(t, values, lw=0.4, color=color, alpha=0.20, zorder=1)
+    # banda ±1 DP
+    ax.fill_between(t, rm - rs, rm + rs, alpha=0.18, color=color, zorder=2)
+    # média móvel
+    ax.plot(t, rm, lw=1.6, color=color, zorder=3)
+
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title:
-        media = data[:, 1].mean()
-        std   = data[:, 1].std()
-        ax.set_title(f"{title}\n(média: {media:.3f} ± {std:.3f})")
+        ax.set_title(f"{title}\n(média: {media:.3f} ± {sdg:.3f})")
     if hline is not None:
-        ax.axhline(hline, ls='--', color='red', alpha=0.5)
-    ax.grid(alpha=0.3)
+        ax.axhline(hline, ls='--', color='red', alpha=0.5, lw=0.9)
+    ax.grid(alpha=0.25)
 
 
 def plot_rmsf(ax, data):
     if data is None:
-        ax.text(0.5, 0.5, "(rmsf não encontrado)", ha='center', va='center',
-                transform=ax.transAxes, fontsize=9, color='gray')
-        return
+        _missing(ax); return
     ax.bar(data[:, 0], data[:, 1], width=1.0, color='seagreen', alpha=0.8)
     ax.bar(data[-5:, 0], data[-5:, 1], width=1.0, color='crimson',
            label='Ligante (5 últ.)')
-    ax.legend(fontsize=8)
+    ax.legend()
     ax.set_xlabel("Resíduo")
     ax.set_ylabel("RMSF (nm)")
     ax.set_title("Flutuação por resíduo (RMSF)")
-    ax.grid(alpha=0.3, axis='y')
+    ax.grid(alpha=0.25, axis='y')
+
+
+def plot_sasa_dual(ax, sasa_prot, sasa_lig, window_ns):
+    """SASA receptor (eixo esq.) + ligante (eixo dir.) com médias móveis."""
+    has_p = sasa_prot is not None
+    has_l = sasa_lig  is not None
+
+    if not has_p and not has_l:
+        _missing(ax); return
+
+    cor_p, cor_l = 'steelblue', 'tomato'
+    ax2 = ax.twinx()
+
+    def _add(axis, data, color, label, ylabel):
+        t, v  = data[:, 0], data[:, 1]
+        dt    = float(t[1] - t[0]) if len(t) > 1 else 0.01
+        win   = max(3, int(window_ns / dt))
+        rm, rs = rolling_stats(v, win)
+        axis.plot(t, v, lw=0.4, color=color, alpha=0.20)
+        axis.fill_between(t, rm - rs, rm + rs, alpha=0.15, color=color)
+        axis.plot(t, rm, lw=1.6, color=color, label=label)
+        axis.set_ylabel(ylabel, color=color)
+        axis.tick_params(axis='y', labelcolor=color)
+
+    if has_p:
+        _add(ax,  sasa_prot, cor_p, 'Receptor', 'SASA receptor (nm²)')
+    if has_l:
+        _add(ax2, sasa_lig,  cor_l, 'Ligante',  'SASA ligante (nm²)')
+
+    ax.set_xlabel("Tempo (ns)")
+    ax.set_title("Área Acessível ao Solvente (SASA)")
+    if has_p: ax.legend(loc='upper left')
+    if has_l: ax2.legend(loc='upper right')
+    ax.grid(alpha=0.25)
+
+
+def plot_triad_lines(ax, xvg_dict, labels, window_ns):
+    """4 distâncias à tríade/S1 com médias móveis + banda."""
+    cores = ['forestgreen', 'royalblue', 'crimson', 'darkorange']
+    keys  = ['dist_r1', 'dist_r2', 'dist_r3', 'dist_r4']
+    any_  = False
+
+    for key, label, cor in zip(keys, labels, cores):
+        d = xvg_dict.get(key)
+        if d is None:
+            continue
+        any_ = True
+        t, v  = d[:, 0], d[:, 1]
+        dt    = float(t[1] - t[0]) if len(t) > 1 else 0.01
+        win   = max(3, int(window_ns / dt))
+        rm, rs = rolling_stats(v, win)
+        ax.plot(t, v, lw=0.3, color=cor, alpha=0.18)
+        ax.fill_between(t, rm - rs, rm + rs, alpha=0.13, color=cor)
+        ax.plot(t, rm, lw=1.5, color=cor, label=label)
+
+    if not any_:
+        _missing(ax); return
+
+    ax.axhline(0.5, ls='--', color='gray', alpha=0.6, lw=0.9, label='0.5 nm')
+    ax.set_xlabel("Tempo (ns)")
+    ax.set_ylabel("Distância mínima (nm)")
+    ax.set_title("Distâncias aos Resíduos Catalíticos")
+    ax.legend()
+    ax.grid(alpha=0.25)
+
+
+def plot_triad_bars(ax, xvg_dict, labels):
+    """Barras de média ± DP para os 4 resíduos."""
+    cores = ['forestgreen', 'royalblue', 'crimson', 'darkorange']
+    keys  = ['dist_r1', 'dist_r2', 'dist_r3', 'dist_r4']
+    lbs, ms, ss, cs = [], [], [], []
+
+    for key, label, cor in zip(keys, labels, cores):
+        d = xvg_dict.get(key)
+        if d is None:
+            continue
+        lbs.append(label)
+        ms.append(d[:, 1].mean())
+        ss.append(d[:, 1].std())
+        cs.append(cor)
+
+    if not lbs:
+        _missing(ax); return
+
+    bars = ax.bar(lbs, ms, yerr=ss, color=cs, alpha=0.80,
+                  capsize=5, edgecolor='black', linewidth=0.5)
+    ax.axhline(0.5, ls='--', color='gray', alpha=0.6, lw=0.9, label='0.5 nm')
+    for bar, m in zip(bars, ms):
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + 0.02,
+                f"{m:.3f} nm", ha='center', fontsize=9)
+    ax.set_ylabel("Distância média (nm)")
+    ax.set_title("Ocupação Média da Tríade Catalítica\n(média ± DP)")
+    ax.legend()
+    ax.grid(alpha=0.25, axis='y')
 
 
 def plot_mmgbsa_total(ax, mmgbsa):
-    """ΔG total ao longo do tempo com média ± desvio."""
     total = None
     for key in ('TOTAL', 'DELTA total', 'delta_total', 'DeltaG'):
         if key in mmgbsa:
-            total = mmgbsa[key]
-            break
+            total = mmgbsa[key]; break
     if total is None:
-        ax.text(0.5, 0.5, "(TOTAL não encontrado no CSV)", ha='center', va='center',
-                transform=ax.transAxes, fontsize=9, color='gray')
-        return
+        _missing(ax); return
     frames = np.arange(len(total))
     media, std = total.mean(), total.std()
-    ax.plot(frames, total, lw=0.8, color='darkred', alpha=0.7)
+    ax.plot(frames, total, lw=0.5, color='darkred', alpha=0.35)
+    rm, rs = rolling_stats(total, max(3, len(total) // 20))
+    ax.fill_between(frames, rm - rs, rm + rs, alpha=0.15, color='darkred')
+    ax.plot(frames, rm, lw=1.6, color='darkred')
     ax.axhline(media, ls='--', color='red', lw=1.2,
                label=f'Média: {media:.2f} kcal/mol')
-    ax.fill_between(frames, media - std, media + std,
-                    alpha=0.15, color='red')
     ax.set_xlabel("Frame")
     ax.set_ylabel("ΔG bind (kcal/mol)")
     ax.set_title(f"Energia de Ligação MM-GBSA\n(média: {media:.2f} ± {std:.2f} kcal/mol)")
-    ax.legend(fontsize=8)
-    ax.grid(alpha=0.3)
+    ax.legend(); ax.grid(alpha=0.25)
 
 
 def plot_mmgbsa_components(ax, mmgbsa):
-    """Componentes VdW, Elet, GB, SA como barras com média ± DP."""
     components = {}
     for key, label in [('VDWAALS', 'VdW'), ('EEL', 'Elet'),
                        ('EGB', 'GB solvat.'), ('ESURF', 'SA')]:
         if key in mmgbsa:
             components[label] = mmgbsa[key]
     if not components:
-        ax.text(0.5, 0.5, "(componentes não encontrados)", ha='center', va='center',
-                transform=ax.transAxes, fontsize=9, color='gray')
-        return
+        _missing(ax); return
     labels = list(components.keys())
     means  = [v.mean() for v in components.values()]
     stds   = [v.std()  for v in components.values()]
@@ -147,7 +273,7 @@ def plot_mmgbsa_components(ax, mmgbsa):
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + (2 if m >= 0 else -6),
                 f"{m:.1f}", ha='center', fontsize=8)
-    ax.grid(alpha=0.3, axis='y')
+    ax.grid(alpha=0.25, axis='y')
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -155,135 +281,86 @@ def plot_mmgbsa_components(ax, mmgbsa):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analise-dir", required=True)
-    ap.add_argument("--titulo",      default="Dinâmica Molecular")
-    ap.add_argument("--mmgbsa-csv",  default=None)
-    ap.add_argument("--output",      default="painel_completo.png")
+    ap.add_argument("--titulo",    default="Dinâmica Molecular")
+    ap.add_argument("--window-ns", type=float, default=5.0,
+                    help="Janela da média móvel em ns (padrão: 5.0)")
+    ap.add_argument("--mmgbsa-csv", default=None)
+    ap.add_argument("--output",    default="painel_completo.png")
     args = ap.parse_args()
 
-    D = args.analise_dir
+    D   = args.analise_dir
+    wns = args.window_ns
+
     xvg = {
-        "rmsd_bb":      load_xvg(os.path.join(D, "rmsd_backbone.xvg")),
-        "rmsd_lig":     load_xvg(os.path.join(D, "rmsd_ligante.xvg")),
-        "rmsf":         load_xvg(os.path.join(D, "rmsf_residuos.xvg")),
-        "rg":           load_xvg(os.path.join(D, "gyrate.xvg")),
-        "ncont":        load_xvg(os.path.join(D, "numcont.xvg")),
-        "hbond":        load_xvg(os.path.join(D, "hbond.xvg")),
-        "sasa_prot":    load_xvg(os.path.join(D, "sasa_protein.xvg")),
-        "sasa_lig":     load_xvg(os.path.join(D, "sasa_ligante.xvg")),
-        "dist_r1":      load_xvg(os.path.join(D, "dist_r1.xvg")),
-        "dist_r2":      load_xvg(os.path.join(D, "dist_r2.xvg")),
-        "dist_r3":      load_xvg(os.path.join(D, "dist_r3.xvg")),
-        "dist_r4":      load_xvg(os.path.join(D, "dist_r4.xvg")),
+        "rmsd_bb":   load_xvg(os.path.join(D, "rmsd_backbone.xvg")),
+        "rmsd_lig":  load_xvg(os.path.join(D, "rmsd_ligante.xvg")),
+        "rmsf":      load_xvg(os.path.join(D, "rmsf_residuos.xvg")),
+        "rg":        load_xvg(os.path.join(D, "gyrate.xvg")),
+        "ncont":     load_xvg(os.path.join(D, "numcont.xvg")),
+        "hbond":     load_xvg(os.path.join(D, "hbond.xvg")),
+        "sasa_prot": load_xvg(os.path.join(D, "sasa_protein.xvg")),
+        "sasa_lig":  load_xvg(os.path.join(D, "sasa_ligante.xvg")),
+        "dist_r1":   load_xvg(os.path.join(D, "dist_r1.xvg")),
+        "dist_r2":   load_xvg(os.path.join(D, "dist_r2.xvg")),
+        "dist_r3":   load_xvg(os.path.join(D, "dist_r3.xvg")),
+        "dist_r4":   load_xvg(os.path.join(D, "dist_r4.xvg")),
     }
 
-    mmgbsa = load_mmgbsa_csv(args.mmgbsa_csv) if args.mmgbsa_csv else None
-    has_mmgbsa = mmgbsa is not None
-
-    # Rótulos da tríade — lê triad_info.txt se existir (gerado por ANALYSES_TRIAD)
-    triad_info_path = os.path.join(D, "triad_info.txt")
-    if os.path.exists(triad_info_path):
-        labels_raw = [l.strip() for l in open(triad_info_path) if l.strip()]
-        triad_labels = (labels_raw + ["?"] * 4)[:4]
+    # Rótulos da tríade
+    triad_info = os.path.join(D, "triad_info.txt")
+    if os.path.exists(triad_info):
+        raw = [l.strip() for l in open(triad_info) if l.strip()]
+        triad_labels = (raw + ["?"] * 4)[:4]
     else:
         triad_labels = ["Res1", "Res2", "Res3", "S1"]
 
-    has_sasa  = xvg["sasa_prot"] is not None or xvg["sasa_lig"] is not None
-    has_triad = any(xvg[k] is not None for k in ("dist_r1", "dist_r2", "dist_r3", "dist_r4"))
+    mmgbsa     = load_mmgbsa_csv(args.mmgbsa_csv) if args.mmgbsa_csv else None
+    has_mmgbsa = mmgbsa is not None
+    has_sasa   = xvg["sasa_prot"] is not None or xvg["sasa_lig"] is not None
+    has_triad  = any(xvg[k] is not None for k in ("dist_r1", "dist_r2",
+                                                    "dist_r3", "dist_r4"))
 
     nrows = 3 + has_sasa + has_triad + (2 if has_mmgbsa else 0)
     fig, axes = plt.subplots(nrows, 2, figsize=(14, nrows * 4))
     fig.suptitle(args.titulo, fontsize=14, fontweight='bold')
 
-    # Row 1
+    # ── Linha 1: RMSD ─────────────────────────────────────────────────────────
     media_bb = xvg["rmsd_bb"][:, 1].mean() if xvg["rmsd_bb"] is not None else None
-    plot_line(axes[0, 0], xvg["rmsd_bb"],  "RMSD (nm)",  "navy",
-              "RMSD do Backbone", hline=media_bb)
-    plot_line(axes[0, 1], xvg["rmsd_lig"], "RMSD (nm)",  "darkorange",
-              "RMSD do Ligante (peptídio)")
+    plot_line(axes[0, 0], xvg["rmsd_bb"],  "RMSD (nm)", "navy",
+              "RMSD do Backbone", hline=media_bb, window_ns=wns)
+    plot_line(axes[0, 1], xvg["rmsd_lig"], "RMSD (nm)", "darkorange",
+              "RMSD do Ligante (peptídeo)", window_ns=wns)
 
-    # Row 2
+    # ── Linha 2: RMSF + Rg ────────────────────────────────────────────────────
     plot_rmsf(axes[1, 0], xvg["rmsf"])
-    plot_line(axes[1, 1], xvg["rg"],       "Rg (nm)",    "purple",
-              "Raio de Giro")
+    plot_line(axes[1, 1], xvg["rg"],       "Rg (nm)",   "purple",
+              "Raio de Giro", window_ns=wns)
 
-    # Row 3
-    plot_line(axes[2, 0], xvg["ncont"],    "N. átomos",  "teal",
-              "Contatos receptor–ligante (<0.4 nm)")
+    # ── Linha 3: Contatos + H-bonds ───────────────────────────────────────────
+    plot_line(axes[2, 0], xvg["ncont"],    "N. átomos", "teal",
+              "Contatos receptor–ligante (<0.4 nm)", window_ns=wns)
     plot_line(axes[2, 1], xvg["hbond"],    "N. H-bonds", "indianred",
-              "Pontes de hidrogênio receptor–ligante")
+              "Pontes de hidrogênio receptor–ligante", window_ns=wns)
 
     next_row = 3
 
-    # Row SASA
+    # ── Linha SASA ────────────────────────────────────────────────────────────
     if has_sasa:
-        ax_sasa = axes[next_row, 0]
-        if xvg["sasa_prot"] is not None:
-            ax_sasa.plot(xvg["sasa_prot"][:, 0], xvg["sasa_prot"][:, 1],
-                         lw=0.8, color="steelblue", label="Receptor")
-        if xvg["sasa_lig"] is not None:
-            ax2 = ax_sasa.twinx()
-            ax2.plot(xvg["sasa_lig"][:, 0], xvg["sasa_lig"][:, 1],
-                     lw=0.8, color="tomato", label="Ligante")
-            ax2.set_ylabel("SASA ligante (nm²)", color="tomato")
-            ax2.tick_params(axis='y', labelcolor='tomato')
-            ax2.legend(loc='upper right', fontsize=8)
-        ax_sasa.set_xlabel("Tempo (ns)")
-        ax_sasa.set_ylabel("SASA receptor (nm²)", color="steelblue")
-        ax_sasa.tick_params(axis='y', labelcolor='steelblue')
-        ax_sasa.set_title("Área Acessível ao Solvente (SASA)")
-        ax_sasa.legend(loc='upper left', fontsize=8)
-        ax_sasa.grid(alpha=0.3)
-
-        # SASA ligante individual no col 1
+        plot_sasa_dual(axes[next_row, 0], xvg["sasa_prot"],
+                       xvg["sasa_lig"], wns)
         plot_line(axes[next_row, 1], xvg["sasa_lig"], "SASA (nm²)", "tomato",
-                  "SASA do Ligante (enterramento)")
+                  "SASA do Ligante (enterramento)", window_ns=wns)
         next_row += 1
 
-    # Row Tríade
+    # ── Linha Tríade ──────────────────────────────────────────────────────────
     if has_triad:
-        ax_tri = axes[next_row, 0]
-        cores_triad = {"dist_r1": (triad_labels[0], "forestgreen"),
-                       "dist_r2": (triad_labels[1], "royalblue"),
-                       "dist_r3": (triad_labels[2], "crimson"),
-                       "dist_r4": (triad_labels[3], "darkorange")}
-        for key, (label, cor) in cores_triad.items():
-            if xvg[key] is not None:
-                ax_tri.plot(xvg[key][:, 0], xvg[key][:, 1],
-                            lw=0.8, color=cor, label=label, alpha=0.85)
-        ax_tri.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
-        ax_tri.set_xlabel("Tempo (ns)")
-        ax_tri.set_ylabel("Distância mínima (nm)")
-        ax_tri.set_title("Distâncias à Tríade Catalítica")
-        ax_tri.legend(fontsize=8)
-        ax_tri.grid(alpha=0.3)
-
-        # média por resíduo da tríade como barras no col 1
-        ax_bar = axes[next_row, 1]
-        labels_bar, means_bar, stds_bar, colors_bar = [], [], [], []
-        for key, (label, cor) in cores_triad.items():
-            if xvg[key] is not None:
-                labels_bar.append(label)
-                means_bar.append(xvg[key][:, 1].mean())
-                stds_bar.append(xvg[key][:, 1].std())
-                colors_bar.append(cor)
-        if labels_bar:
-            bars = ax_bar.bar(labels_bar, means_bar, yerr=stds_bar,
-                              color=colors_bar, alpha=0.8, capsize=5,
-                              edgecolor='black', linewidth=0.5)
-            ax_bar.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
-            for bar, m in zip(bars, means_bar):
-                ax_bar.text(bar.get_x() + bar.get_width() / 2,
-                            bar.get_height() + 0.01,
-                            f"{m:.3f} nm", ha='center', fontsize=9)
-            ax_bar.set_ylabel("Distância média (nm)")
-            ax_bar.set_title("Ocupação Média da Tríade Catalítica\n(média ± DP)")
-            ax_bar.legend(fontsize=8)
-            ax_bar.grid(alpha=0.3, axis='y')
+        plot_triad_lines(axes[next_row, 0], xvg, triad_labels, wns)
+        plot_triad_bars( axes[next_row, 1], xvg, triad_labels)
         next_row += 1
 
-    # Row MM-GBSA (optional)
+    # ── Linha MM-GBSA ─────────────────────────────────────────────────────────
     if has_mmgbsa:
-        plot_mmgbsa_total(axes[next_row, 0], mmgbsa)
+        plot_mmgbsa_total(     axes[next_row, 0], mmgbsa)
         plot_mmgbsa_components(axes[next_row, 1], mmgbsa)
 
     plt.tight_layout()
@@ -292,25 +369,24 @@ def main():
     print(f"Salvo: {out}")
     plt.close()
 
-    # PNGs individuais
-    specs = [
-        ("rmsd_bb",  "RMSD (nm)",    "navy"),
-        ("rmsd_lig", "RMSD (nm)",    "darkorange"),
-        ("rg",       "Rg (nm)",      "purple"),
-        ("ncont",    "N. átomos",    "teal"),
-        ("hbond",    "N. H-bonds",   "indianred"),
+    # ── PNGs individuais ──────────────────────────────────────────────────────
+    specs_line = [
+        ("rmsd_bb",   "RMSD (nm)",    "navy",       "rmsd_bb.png"),
+        ("rmsd_lig",  "RMSD (nm)",    "darkorange",  "rmsd_lig.png"),
+        ("rg",        "Rg (nm)",      "purple",      "rg.png"),
+        ("ncont",     "N. átomos",    "teal",        "ncont.png"),
+        ("hbond",     "N. H-bonds",   "indianred",   "hbond.png"),
+        ("sasa_lig",  "SASA (nm²)",   "tomato",      "sasa_ligante.png"),
+        ("sasa_prot", "SASA (nm²)",   "steelblue",   "sasa_protein.png"),
     ]
-    for key, ylabel, color in specs:
-        if xvg[key] is None:
+    for key, ylabel, color, fname in specs_line:
+        if xvg.get(key) is None:
             continue
         fig, ax = plt.subplots(figsize=(9, 5))
-        ax.plot(xvg[key][:, 0], xvg[key][:, 1], lw=0.8, color=color)
-        ax.set_xlabel("Tempo (ns)")
-        ax.set_ylabel(ylabel)
-        ax.set_title(key)
-        ax.grid(alpha=0.3)
+        plot_line(ax, xvg[key], ylabel, color, title=fname.replace('.png',''),
+                  window_ns=wns)
         plt.tight_layout()
-        plt.savefig(os.path.join(D, f"{key}.png"), dpi=150, bbox_inches='tight')
+        plt.savefig(os.path.join(D, fname), dpi=150, bbox_inches='tight')
         plt.close()
 
     if xvg["rmsf"] is not None:
@@ -320,41 +396,9 @@ def main():
         plt.savefig(os.path.join(D, "rmsf.png"), dpi=150, bbox_inches='tight')
         plt.close()
 
-    # SASA individual
-    if xvg["sasa_lig"] is not None:
+    if has_triad:
         fig, ax = plt.subplots(figsize=(9, 5))
-        plot_line(ax, xvg["sasa_lig"], "SASA (nm²)", "tomato",
-                  "SASA do Ligante no Complexo")
-        plt.tight_layout()
-        plt.savefig(os.path.join(D, "sasa_ligante.png"), dpi=150, bbox_inches='tight')
-        plt.close()
-
-    if xvg["sasa_prot"] is not None:
-        fig, ax = plt.subplots(figsize=(9, 5))
-        plot_line(ax, xvg["sasa_prot"], "SASA (nm²)", "steelblue",
-                  "SASA do Receptor")
-        plt.tight_layout()
-        plt.savefig(os.path.join(D, "sasa_protein.png"), dpi=150, bbox_inches='tight')
-        plt.close()
-
-    # Tríade individual
-    triad_keys = [("dist_r1", triad_labels[0], "forestgreen"),
-                  ("dist_r2", triad_labels[1], "royalblue"),
-                  ("dist_r3", triad_labels[2], "crimson"),
-                  ("dist_r4", triad_labels[3], "darkorange")]
-    any_triad = any(xvg[k] is not None for k, *_ in triad_keys)
-    if any_triad:
-        fig, ax = plt.subplots(figsize=(9, 5))
-        for key, label, cor in triad_keys:
-            if xvg[key] is not None:
-                ax.plot(xvg[key][:, 0], xvg[key][:, 1],
-                        lw=0.8, color=cor, label=label)
-        ax.axhline(0.5, ls='--', color='gray', alpha=0.5, label='0.5 nm')
-        ax.set_xlabel("Tempo (ns)")
-        ax.set_ylabel("Distância mínima (nm)")
-        ax.set_title("Distâncias à Tríade Catalítica")
-        ax.legend()
-        ax.grid(alpha=0.3)
+        plot_triad_lines(ax, xvg, triad_labels, wns)
         plt.tight_layout()
         plt.savefig(os.path.join(D, "triad_distances.png"), dpi=150, bbox_inches='tight')
         plt.close()

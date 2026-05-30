@@ -12,7 +12,6 @@ include { PRODUCTION       } from './modules/local/production/main.nf'
 include { POSTPROCESS      } from './modules/local/postprocess/main.nf'
 include { ANALYSES         } from './modules/local/analyses/main.nf'
 include { PLOT             } from './modules/local/plot/main.nf'
-include { ANALYSES_SASA   } from './modules/local/analyses_sasa/main.nf'
 include { ANALYSES_TRIAD  } from './modules/local/analyses_triad/main.nf'
 
 workflow {
@@ -64,12 +63,10 @@ workflow {
     ANALYSES(ch_analyses)
     PLOT(ANALYSES.out.xvg)
 
-    // ── Análises estendidas ────────────────────────────────────────────────────
+    // ── Análises estendidas (distâncias tríade + bolsão S1) ───────────────────
     ch_extended = POSTPROCESS.out.fit
         .join(ANALYSES.out.xvg, by: [0])
         .map { meta, tpr, xtc, xvgs, ndx -> tuple(meta, tpr, xtc, ndx) }
-
-    ANALYSES_SASA(ch_extended)
 
     // Injeta resíduos de interesse no canal só para ANALYSES_TRIAD
     ch_triad_input = ch_extended
