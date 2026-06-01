@@ -1,0 +1,2 @@
+sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
+acr157-gore4-c2,/home/eulalio/gromacs/MD-gromacs/ACR157-GORE4_NEW/acr157_c2_receptor.pdb,/home/eulalio/gromacs/MD-gromacs/ACR157-GORE4_NEW/acr157_c2_ligante.pdb,69,114,211,205
