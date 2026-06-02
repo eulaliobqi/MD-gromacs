@@ -3,8 +3,8 @@
 Pipeline automatizado para simulações de dinâmica molecular de complexos
 **proteína–peptídeo** via GROMACS, usando Nextflow DSL2.
 
-Desenvolvido e validado para tripsina + inibidores peptídicos (GORE4)
-a pH 8,2 por 200 ns.
+Desenvolvido e validado para tripsina digestiva (*Spodoptera* spp.) + inibidores
+peptídicos (GORE4) a pH 8,2 por 100–200 ns.
 
 ---
 
@@ -41,24 +41,35 @@ da preparação do PDB até os gráficos de análise prontos para publicação.
 - Prepara o complexo: protonação de His por pH, detecção automática de pontes
   dissulfeto (CYX), atribuição de cadeias A/B
 - Gera topologia com force field AMBER99sb-ILDN e água TIP3P
-- Constrói a caixa dodecaédrica, solvatação e adição de íons NaCl
-- Equilibração: minimização de energia → NVT 100 ps → NPT 100 ps
-- Produção: 200 ns NPT com GPU
+- Constrói a caixa **cúbica** com margem de 2,0 nm, solvatação e adição de **KCl 0,10 M**
+- Equilibração: minimização de energia → NVT 200 ps → NPT 500 ps (Berendsen)
+- Produção: 100–200 ns NPT com Parrinello-Rahman e GPU
 - Pós-processamento: correção de PBC e alinhamento da trajetória
-- Análises: RMSD, RMSF, raio de giro, contatos, pontes de H
-- Figuras: painel 3×2 e PNGs individuais prontos para artigo
+- Análises: RMSD, RMSF, raio de giro, contatos, pontes de H, SASA,
+  distâncias aos resíduos catalíticos/S1
+- Figuras: painel completo e PNGs individuais prontos para artigo
+
+**Parâmetros físicos otimizados para lepidópteros:**
+
+| Parâmetro | Valor | Justificativa |
+|-----------|-------|---------------|
+| pH | 8,2 | Midgut alcalino de *Spodoptera*; His57 → HIE (forma ativa) |
+| Cátion | K⁺ | Hemolínfa de insetos é K⁺-dominada (vs Na⁺ em mamíferos) |
+| [KCl] | 0,10 M | Midgut hipotônico (literatura 0,10–0,15 M) |
+| Temperatura | 300 K | Fisiológica larval (25–30 °C) |
+| Force field | AMBER99sb-ILDN / TIP3P | Padrão para proteínas globulares |
 
 **Receptores disponíveis neste repositório** (clusters HADDOCK vs GORE4):
 
-| Receptor   | Clusters |
-|------------|----------|
-| ACR157     | 10       |
-| DN1441     | 10       |
-| DN773      | 8        |
-| DN1937     | 10       |
-| QCL936     | 10       |
-| XP273      | 10       |
-| XP352      | 10       |
+| Receptor | Clusters |
+|----------|----------|
+| ACR157   | 10       |
+| DN1441   | 10       |
+| DN773    | 8        |
+| DN1937   | 10       |
+| QCL936   | 10       |
+| XP273    | 10       |
+| XP352    | 10       |
 
 Cada cluster HADDOCK contém 4 poses (modelos 1–4).
 Total: **68 pares** possíveis para simulação.
@@ -77,13 +88,14 @@ MD-gromacs/
 ├── modules/local/                 # Um módulo por etapa do pipeline
 │   ├── prepare_complex/main.nf    # Preparação do complexo (CYX, HIS, chains)
 │   ├── topology/main.nf           # pdb2gmx → topol.top + *.itp
-│   ├── box_solvate_ions/main.nf   # editconf + solvate + genion
+│   ├── box_solvate_ions/main.nf   # editconf (cúbico 2 nm) + solvate + genion (KCl)
 │   ├── minimization/main.nf       # Minimização de energia (steep)
-│   ├── nvt/main.nf                # Equil. NVT 100 ps
-│   ├── npt/main.nf                # Equil. NPT 100 ps
-│   ├── production/main.nf         # DM de produção (N ns)
+│   ├── nvt/main.nf                # Equil. NVT 200 ps
+│   ├── npt/main.nf                # Equil. NPT 500 ps (Berendsen)
+│   ├── production/main.nf         # DM de produção (N ns, Parrinello-Rahman)
 │   ├── postprocess/main.nf        # Correção PBC + alinhamento
-│   ├── analyses/main.nf           # RMSD, RMSF, Rg, contatos, H-bonds
+│   ├── analyses/main.nf           # RMSD, RMSF, Rg, contatos, H-bonds, SASA
+│   ├── analyses_triad/main.nf     # Distâncias aos resíduos catalíticos/S1
 │   └── plot/main.nf               # Figuras PNG
 │
 ├── conf/
@@ -97,10 +109,10 @@ MD-gromacs/
 │   └── plot_results.py            # Gerar figuras manualmente
 │
 ├── assets/
-│   └── samplesheet_example.csv    # Exemplo de samplesheet
-│
-├── receptor_ph82.pdb              # Receptor de teste (pH 8,2)
-├── ligante_ph82.pdb               # Ligante de teste (pH 8,2)
+│   ├── samplesheet_example.csv    # Exemplo de samplesheet
+│   ├── samplesheet_xp273_c1.csv   # XP273-GORE4 cluster 1
+│   ├── samplesheet_xp352_c4.csv   # XP352-GORE4 cluster 4
+│   └── samplesheet_acr157_c2.csv  # ACR157-GORE4 cluster 2
 │
 ├── ACR157-GORE4-HADDOCK/          # Clusters HADDOCK: receptor ACR157 + peptídeo GORE4
 ├── DN1441-GORE4-HADDOCK/          #   cluster1_1.pdb ... clusterN_4.pdb
@@ -132,7 +144,7 @@ Entradas
            │
            ▼
 ┌─────────────────────┐
-│  BOX_SOLVATE_IONS   │  Dodecaedro 1,2 nm · TIP3P · NaCl 0,15 M
+│  BOX_SOLVATE_IONS   │  Cúbico 2,0 nm · TIP3P · KCl 0,10 M
 └──────────┬──────────┘
            │ ions.gro
            ▼
@@ -142,17 +154,17 @@ Entradas
            │ em.gro
            ▼
 ┌─────────────────────┐
-│        NVT          │  100 ps · 300 K · restrições de posição
+│        NVT          │  200 ps · 300 K · restrições de posição
 └──────────┬──────────┘
            │ nvt.gro + nvt.cpt
            ▼
 ┌─────────────────────┐
-│        NPT          │  100 ps · 1 bar · C-rescale
+│        NPT          │  500 ps · 1 bar · Berendsen
 └──────────┬──────────┘
            │ npt.gro + npt.cpt
            ▼
 ┌─────────────────────┐
-│     PRODUCTION      │  200 ns NPT · Parrinello-Rahman · GPU
+│     PRODUCTION      │  100–200 ns NPT · Parrinello-Rahman · GPU
 └──────────┬──────────┘
            │ md.tpr + md.xtc
            ▼
@@ -163,9 +175,15 @@ Entradas
            ▼
 ┌─────────────────────┐
 │      ANALYSES       │  RMSD backbone/ligante · RMSF · Rg
-│                     │  contatos < 0,4 nm · pontes de H
+│                     │  contatos < 0,4 nm · pontes de H · SASA
 └──────────┬──────────┘
            │ *.xvg
+           ▼
+┌─────────────────────┐
+│   ANALYSES_TRIAD    │  Distâncias ligante → resíduos catalíticos/S1
+│                     │  (triad_1..4 definidos no samplesheet)
+└──────────┬──────────┘
+           │ dist_triad*.xvg
            ▼
 ┌─────────────────────┐
 │        PLOT         │  painel_completo.png + PNGs individuais
@@ -173,7 +191,8 @@ Entradas
 ```
 
 Cada etapa é um **processo Nextflow independente**: se o pipeline for
-interrompido, `-resume` retoma do ponto exato onde parou.
+interrompido, `-resume` retoma do ponto exato onde parou (desde que nenhum
+parâmetro de simulação tenha mudado).
 
 ---
 
@@ -194,7 +213,7 @@ interrompido, `-resume` retoma do ponto exato onde parou.
 - **CPU**: mínimo 4 cores para equilibração; 8+ recomendado
 - **GPU NVIDIA**: fortemente recomendado para produção (CUDA 11+)
 - **Memória**: 16 GB RAM mínimo; 32 GB recomendado para sistemas grandes
-- **Disco**: ~5–10 GB por simulação de 200 ns
+- **Disco**: ~5–10 GB por simulação de 100 ns
 
 ---
 
@@ -228,7 +247,7 @@ mamba env create -f environment.yml
 mamba activate md-gromacs
 
 # Verificar instalações
-gmx --version
+gmx_mpi --version
 nextflow -version
 python --version
 ```
@@ -251,10 +270,6 @@ mamba activate md-nextflow
 O pipeline precisa de **dois PDBs separados** para cada simulação:
 - `receptor.pdb` — proteína (cadeia A)
 - `ligante.pdb`  — peptídeo (cadeia B)
-
-#### Caso os arquivos já estejam separados
-
-Use diretamente (ex: `receptor_ph82.pdb` e `ligante_ph82.pdb` que já estão no repositório).
 
 #### Caso use os clusters HADDOCK do repositório
 
@@ -298,33 +313,43 @@ ls ${PREP_DIR}/
 
 ### 5.4 Criar o samplesheet
 
-O samplesheet é um arquivo CSV com três colunas:
+O samplesheet é um arquivo CSV com **7 colunas**:
 
-| Coluna       | Descrição                        |
-|--------------|----------------------------------|
-| `sample_id`  | Nome único para a simulação      |
-| `receptor`   | Caminho para o PDB do receptor   |
-| `ligand`     | Caminho para o PDB do ligante    |
+| Coluna      | Descrição                                              |
+|-------------|--------------------------------------------------------|
+| `sample_id` | Nome único para a simulação                            |
+| `receptor`  | Caminho para o PDB do receptor                         |
+| `ligand`    | Caminho para o PDB do ligante                          |
+| `triad_1`   | Número do resíduo 1 para distâncias (ex: Tyr do sítio ativo) |
+| `triad_2`   | Número do resíduo 2 (ex: Asp da tríade catalítica)    |
+| `triad_3`   | Número do resíduo 3 (ex: Ser nucleofílica)             |
+| `triad_4`   | Número do resíduo 4 (ex: Ile do bolsão S1)            |
 
-**Exemplo simples (caso teste):**
+> Os campos `triad_1..4` definem os resíduos-alvo para o módulo
+> `ANALYSES_TRIAD` (distâncias ligante–resíduo ao longo da trajetória).
+> Use `0` para desabilitar um resíduo.
+
+**Exemplo — GORE4 tripsina (resíduos catalíticos reais):**
 
 ```bash
 cat > samplesheet.csv << 'EOF'
-sample_id,receptor,ligand
-teste_ph82,receptor_ph82.pdb,ligante_ph82.pdb
+sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
+xp273-gore4-c1,inputs/XP273/rec_cluster1_1.pdb,inputs/XP273/lig_cluster1_1.pdb,83,132,234,229
+acr157-gore4-c2,inputs/ACR157/rec_cluster2_1.pdb,inputs/ACR157/lig_cluster2_1.pdb,69,114,211,205
 EOF
 ```
 
-**Exemplo com múltiplos complexos:**
+**Exemplo — samplesheets prontos no repositório:**
 
 ```bash
-cat > samplesheet.csv << 'EOF'
-sample_id,receptor,ligand
-XP273_c1,inputs/XP273/rec_cluster1_1.pdb,inputs/XP273/lig_cluster1_1.pdb
-XP273_c3,inputs/XP273/rec_cluster3_1.pdb,inputs/XP273/lig_cluster3_1.pdb
-DN1441_c1,inputs/DN1441/rec_cluster1_1.pdb,inputs/DN1441/lig_cluster1_1.pdb
-DN773_c2,inputs/DN773/rec_cluster2_1.pdb,inputs/DN773/lig_cluster2_1.pdb
-EOF
+# XP273-GORE4 cluster 1
+cat assets/samplesheet_xp273_c1.csv
+
+# ACR157-GORE4 cluster 2
+cat assets/samplesheet_acr157_c2.csv
+
+# XP352-GORE4 cluster 4
+cat assets/samplesheet_xp352_c4.csv
 ```
 
 > Os caminhos podem ser relativos ao diretório de execução ou absolutos.
@@ -374,42 +399,46 @@ squeue -u $USER   # jobs em execução/pendentes
 
 ```bash
 nextflow run main.nf \
-    --input samplesheet.csv \
+    --input assets/samplesheet_xp273_c1.csv \
+    --outdir ~/gromacs/results/XP273-GORE4/MD \
     --pH 8.2 \
-    --time_ns 200 \
-    -profile local,conda
+    --time_ns 100 \
+    -profile conda,local
 ```
 
 #### Execução em cluster SLURM
 
 ```bash
-# Com GROMACS MPI (gmx_mpi)
 nextflow run main.nf \
-    --input samplesheet.csv \
+    --input assets/samplesheet_xp273_c1.csv \
+    --outdir ~/gromacs/results/XP273-GORE4/MD \
     --pH 8.2 \
-    --time_ns 200 \
+    --time_ns 100 \
     --gmx_cmd gmx_mpi \
     --mpi_cmd "mpirun --use-hwthread-cpus -np 1" \
-    -profile slurm,conda \
-    -resume
+    -profile slurm,conda
 ```
 
 #### Sem GPU (apenas CPU)
 
 ```bash
 nextflow run main.nf \
-    --input samplesheet.csv \
+    --input assets/samplesheet_xp273_c1.csv \
     --use_gpu false \
     -profile local,conda
 ```
 
-> **Dica:** execute o Nextflow dentro de uma sessão `screen` ou `tmux`
-> para não perder a execução se a conexão SSH cair:
+> **Dica:** execute o Nextflow dentro de uma sessão `screen` para não perder
+> a execução se a conexão SSH cair:
 > ```bash
 > screen -S md_pipeline
-> nextflow run main.nf --input samplesheet.csv -profile slurm,conda
+> nextflow run main.nf --input assets/samplesheet_xp273_c1.csv -profile conda,local
 > # Ctrl+A, D para desanexar; screen -r md_pipeline para reconectar
 > ```
+
+> **Atenção `-resume`:** use `-resume` apenas para retomar um run interrompido
+> com os **mesmos parâmetros**. Se alterar `box_dist`, `nacl_conc`, tempos de
+> equilibração ou force field, rode sem `-resume` em um novo `--outdir`.
 
 ---
 
@@ -419,8 +448,8 @@ nextflow run main.nf \
 
 ```bash
 # O Nextflow imprime o progresso no terminal:
-# [d6/3a9bc1] PREPARE_COMPLEX (teste_ph82) [100%] 1 of 1 ✔
-# [f2/1c88e2] TOPOLOGY (teste_ph82)        [ 50%] 0 of 1
+# [d6/3a9bc1] PREPARE_COMPLEX (xp273-gore4-c1) [100%] 1 of 1 ✔
+# [f2/1c88e2] TOPOLOGY (xp273-gore4-c1)        [ 50%] 0 of 1
 ```
 
 **Ver log detalhado de um processo:**
@@ -430,11 +459,10 @@ nextflow run main.nf \
 cat work/d6/3a9bc1*/\.command.log
 ```
 
-**Retomar execução interrompida:**
+**Retomar execução interrompida (mesmos parâmetros):**
 
 ```bash
-# Adicione -resume: o Nextflow detecta o que já foi concluído e continua
-nextflow run main.nf --input samplesheet.csv -profile slurm,conda -resume
+nextflow run main.nf --input assets/samplesheet_xp273_c1.csv -profile conda,local -resume
 ```
 
 **Verificar status dos jobs no SLURM:**
@@ -452,16 +480,17 @@ ou no diretório definido por `--outdir`.
 
 ```bash
 # Ver arquivos gerados para uma simulação
-ls ~/gromacs/results/teste_ph82/
+ls ~/gromacs/results/xp273-gore4-c1/
 
 # Verificar se a produção terminou
-ls ~/gromacs/results/teste_ph82/prod/
+ls ~/gromacs/results/xp273-gore4-c1/prod/
 # md.tpr  md.xtc  md.gro  md.cpt  md_fit.xtc
 
 # Abrir o painel de análises
-ls ~/gromacs/results/teste_ph82/analise/
+ls ~/gromacs/results/xp273-gore4-c1/analise/
 # rmsd_backbone.xvg  rmsd_ligante.xvg  rmsf_residuos.xvg
-# gyrate.xvg  numcont.xvg  hbond.xvg
+# gyrate.xvg  numcont.xvg  hbond.xvg  sasa_receptor.xvg  sasa_ligante.xvg
+# dist_triad1.xvg  dist_triad2.xvg  dist_triad3.xvg  dist_triad4.xvg
 # painel_completo.png  rmsd_bb.png  rmsd_lig.png  ...
 ```
 
@@ -469,22 +498,22 @@ Baixe o painel de figuras para visualizar:
 
 ```bash
 # No seu computador local:
-scp usuario@servidor:~/gromacs/results/teste_ph82/analise/painel_completo.png .
+scp usuario@servidor:~/gromacs/results/xp273-gore4-c1/analise/painel_completo.png .
 ```
 
 ---
 
 ## 6. Exemplos práticos
 
-### Exemplo 1 — Caso teste incluído no repositório
+### Exemplo 1 — Samplesheet de teste incluso no repositório
 
 ```bash
-# Arquivo samplesheet já existe em assets/samplesheet_example.csv
 nextflow run main.nf \
     --input assets/samplesheet_example.csv \
+    --outdir ~/gromacs/results/teste \
     --pH 8.2 \
-    --time_ns 200 \
-    -profile local,conda
+    --time_ns 100 \
+    -profile conda,local
 ```
 
 ### Exemplo 2 — Um único cluster HADDOCK
@@ -496,12 +525,18 @@ echo -e "TER\nEND" >> rec.pdb
 awk '/^ATOM/ && substr($0,22,1)=="B"' XP273-GORE4-HADDOCK/cluster1_1.pdb > lig.pdb
 echo -e "TER\nEND" >> lig.pdb
 
-# 2. Criar samplesheet
-echo "sample_id,receptor,ligand"   >  sheet.csv
-echo "XP273_c1,rec.pdb,lig.pdb"   >> sheet.csv
+# 2. Criar samplesheet (com resíduos catalíticos do GORE4)
+cat > sheet.csv << 'EOF'
+sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
+xp273_c1,rec.pdb,lig.pdb,83,132,234,229
+EOF
 
 # 3. Executar
-nextflow run main.nf --input sheet.csv --pH 8.2 --time_ns 200 -profile local,conda
+nextflow run main.nf \
+    --input sheet.csv \
+    --outdir ~/gromacs/results/XP273-GORE4/MD \
+    --pH 8.2 --time_ns 100 \
+    -profile conda,local
 ```
 
 ### Exemplo 3 — Todos os clusters top-1 de todos os receptores
@@ -509,7 +544,7 @@ nextflow run main.nf --input sheet.csv --pH 8.2 --time_ns 200 -profile local,con
 ```bash
 # Gera inputs separados para todos os cluster*_1.pdb de todos os receptores
 mkdir -p inputs
-echo "sample_id,receptor,ligand" > samplesheet_all.csv
+echo "sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4" > samplesheet_all.csv
 
 for dir in *-GORE4-HADDOCK; do
     receptor_name=$(echo $dir | sed 's/-GORE4-HADDOCK//')
@@ -523,39 +558,41 @@ for dir in *-GORE4-HADDOCK; do
         awk '/^ATOM/ && substr($0,22,1)=="A"' $pdb > $rec; echo -e "TER\nEND" >> $rec
         awk '/^ATOM/ && substr($0,22,1)=="B"' $pdb > $lig; echo -e "TER\nEND" >> $lig
 
-        echo "${sample},${rec},${lig}" >> samplesheet_all.csv
+        # triad_1..4 = 0 para usar fallback global do nextflow.config
+        echo "${sample},${rec},${lig},0,0,0,0" >> samplesheet_all.csv
     done
 done
 
-# Verifica: deve listar ~68 linhas
+# Verifica: deve listar ~68 linhas de dados
 wc -l samplesheet_all.csv
 
 # Executa em paralelo no cluster (Nextflow gerencia a fila)
 nextflow run main.nf \
     --input samplesheet_all.csv \
+    --outdir ~/gromacs/results/ALL \
     --pH 8.2 \
-    --time_ns 200 \
+    --time_ns 100 \
     --gmx_cmd gmx_mpi \
     --mpi_cmd "mpirun --use-hwthread-cpus -np 1" \
-    -profile slurm,conda \
-    -resume
+    -profile slurm,conda
 ```
 
 ### Exemplo 4 — Re-executar apenas análises (DM já concluída)
 
 ```bash
 # Se a trajetória já existe e você quer refazer análises/figuras:
-bash bin/run_analyses.sh ~/gromacs/results/XP273_c1
+bash bin/run_analyses.sh ~/gromacs/results/xp273-gore4-c1
 
 python3 bin/plot_results.py \
-    --analise-dir ~/gromacs/results/XP273_c1/analise \
-    --titulo "XP273 cluster1 - 200 ns pH 8.2"
+    --analise-dir ~/gromacs/results/xp273-gore4-c1/analise \
+    --titulo "XP273-GORE4 cluster1 - 100 ns pH 8.2" \
+    --window-ns 5
 ```
 
 ### Exemplo 5 — Retomar produção interrompida manualmente
 
 ```bash
-cd ~/gromacs/results/XP273_c1/prod
+cd ~/gromacs/results/xp273-gore4-c1/prod
 
 # gmx_mpi com checkpoint
 gmx_mpi mdrun -deffnm md -cpi md.cpt \
@@ -570,24 +607,29 @@ gmx_mpi mdrun -deffnm md -cpi md.cpt \
 Todos os parâmetros têm valores padrão e podem ser sobrescritos na linha de comando
 com `--nome_parametro valor`.
 
-| Parâmetro       | Padrão               | Descrição                                                      |
-|-----------------|----------------------|----------------------------------------------------------------|
-| `--input`       | *obrigatório*        | Caminho para o samplesheet CSV                                 |
-| `--outdir`      | `~/gromacs/results`  | Diretório de saída                                             |
-| `--pH`          | `8.2`                | pH da simulação (define protonação da His)                     |
-| `--time_ns`     | `200`                | Tempo de produção em nanossegundos                             |
-| `--forcefield`  | `amber99sb-ildn`     | Force field GROMACS                                            |
-| `--water`       | `tip3p`              | Modelo de água                                                 |
-| `--nacl_conc`   | `0.15`               | Concentração de NaCl em mol/L                                  |
-| `--temperature` | `300`                | Temperatura em Kelvin                                          |
-| `--box_dist`    | `1.2`                | Distância mínima proteína–borda da caixa (nm)                  |
-| `--box_type`    | `dodecahedron`       | Tipo de caixa (`dodecahedron`, `cubic`, `triclinic`)           |
-| `--gmx_cmd`     | `gmx`                | Binário do GROMACS (`gmx` ou `gmx_mpi`)                       |
-| `--mpi_cmd`     | `''`                 | Prefixo MPI (ex: `mpirun --use-hwthread-cpus -np 1`)          |
-| `--use_gpu`     | `true`               | Habilita aceleração GPU no mdrun                               |
-| `--gpu_id`      | `0`                  | ID da GPU a usar                                               |
-| `--ntomp`       | `8`                  | Número de threads OpenMP                                       |
-| `--maxwarn`     | `2`                  | Máximo de warnings aceitos pelo grompp                         |
+| Parâmetro       | Padrão               | Descrição                                                        |
+|-----------------|----------------------|------------------------------------------------------------------|
+| `--input`       | *obrigatório*        | Caminho para o samplesheet CSV                                   |
+| `--outdir`      | `~/gromacs/results`  | Diretório de saída                                               |
+| `--pH`          | `8.2`                | pH da simulação (define protonação da His)                       |
+| `--time_ns`     | `200`                | Tempo de produção em nanossegundos                               |
+| `--forcefield`  | `amber99sb-ildn`     | Force field GROMACS                                              |
+| `--water`       | `tip3p`              | Modelo de água                                                   |
+| `--cation`      | `K`                  | Cátion a adicionar (`K` para insetos, `NA` para mamíferos)       |
+| `--nacl_conc`   | `0.10`               | Concentração de sal em mol/L                                     |
+| `--temperature` | `300`                | Temperatura em Kelvin                                            |
+| `--box_dist`    | `2.0`                | Distância mínima proteína–borda da caixa (nm)                    |
+| `--box_type`    | `cubic`              | Tipo de caixa (`cubic`, `dodecahedron`, `triclinic`)             |
+| `--gmx_cmd`     | `gmx_mpi`            | Binário do GROMACS (`gmx` ou `gmx_mpi`)                         |
+| `--mpi_cmd`     | `mpirun -np 1`       | Prefixo MPI                                                      |
+| `--use_gpu`     | `true`               | Habilita aceleração GPU no mdrun                                 |
+| `--gpu_id`      | `0`                  | ID da GPU a usar                                                 |
+| `--ntomp`       | `8`                  | Número de threads OpenMP                                         |
+| `--maxwarn`     | `2`                  | Máximo de warnings aceitos pelo grompp                           |
+| `--triad_1`     | `0`                  | Resíduo 1 para distâncias (fallback global; preferir samplesheet)|
+| `--triad_2`     | `0`                  | Resíduo 2 para distâncias                                        |
+| `--triad_3`     | `0`                  | Resíduo 3 para distâncias                                        |
+| `--triad_4`     | `0`                  | Resíduo 4 para distâncias (bolsão S1)                            |
 
 **Protonação da Histidina por pH:**
 
@@ -596,6 +638,15 @@ com `--nome_parametro valor`.
 | < 6,5           | `HIP`   | Ambos os nitrogênios protonados       |
 | 6,5 – 8,0       | `HID`   | H no Nδ (delta)                       |
 | > 8,0 (padrão)  | `HIE`   | H no Nε (epsilon) — pH 8,2 usa HIE   |
+
+**Resíduos catalíticos de GORE4 (tripsina *Spodoptera*):**
+
+| triad_N | Resíduo | Papel                   |
+|---------|---------|-------------------------|
+| triad_1 | Tyr83   | Sítio ativo periférico  |
+| triad_2 | Asp132  | Tríade catalítica       |
+| triad_3 | Ser234  | Ser nucleofílica        |
+| triad_4 | Ile229  | Bolsão S1 (especificidade) |
 
 ---
 
@@ -646,7 +697,13 @@ Para cada `sample_id` do samplesheet, o pipeline gera:
     ├── gyrate.xvg            # Raio de giro da proteína (nm vs tempo)
     ├── numcont.xvg           # N.° de contatos receptor–ligante < 0,4 nm
     ├── hbond.xvg             # N.° de pontes de H receptor–ligante
-    ├── painel_completo.png   # Figura 3×2 com todas as métricas ← principal
+    ├── sasa_receptor.xvg     # SASA do receptor ao longo da trajetória
+    ├── sasa_ligante.xvg      # SASA do ligante ao longo da trajetória
+    ├── dist_triad1.xvg       # Distância ligante → resíduo triad_1
+    ├── dist_triad2.xvg       # Distância ligante → resíduo triad_2
+    ├── dist_triad3.xvg       # Distância ligante → resíduo triad_3
+    ├── dist_triad4.xvg       # Distância ligante → resíduo triad_4
+    ├── painel_completo.png   # Figura completa com todas as métricas ← principal
     ├── rmsd_bb.png
     ├── rmsd_lig.png
     ├── rmsf.png
@@ -668,7 +725,7 @@ ERRO: gmx ou gmx_mpi não encontrado
 ```bash
 # Verifique se o ambiente está ativo
 mamba activate md-gromacs
-which gmx
+which gmx_mpi
 
 # Ou carregue o módulo do cluster
 module load gromacs
@@ -684,11 +741,6 @@ grep "^ATOM\|^HETATM" receptor.pdb | awk '{print substr($0,18,3)}' | sort -u
 
 Se houver `MSE`, `SEP`, `TPO` ou outros resíduos modificados, eles precisam
 ser convertidos para os equivalentes padrão antes de entrar no pipeline.
-
-### Erro "Must have admin rights" ao tentar deletar repo GitHub
-
-O token armazenado não tem a permissão `delete_repo`. Delete manualmente
-em: **GitHub → Settings do repositório → Danger Zone → Delete repository**.
 
 ### Spike no RMSD (pico abrupto na trajetória)
 
@@ -713,7 +765,7 @@ cd ~/gromacs/results/<sample_id>/prod
 gmx check -f md.xtc 2>&1 | grep "Last frame"
 
 # Retome com checkpoint (via Nextflow — recomendado)
-nextflow run main.nf --input samplesheet.csv -profile slurm,conda -resume
+nextflow run main.nf --input assets/samplesheet.csv -profile conda,local -resume
 
 # Ou retome manualmente
 gmx_mpi mdrun -deffnm md -cpi md.cpt \
@@ -736,22 +788,32 @@ awk '{print substr($0,22,1)}' ligante.pdb | sort -u
 Se estiver vazio, o `prepare_complex.py` atribui automaticamente chain B.
 Certifique-se de que o arquivo começa com `ATOM` (não `HETATM`).
 
+### Artefatos de PBC (complexo atravessa a caixa)
+
+A caixa cúbica com 2,0 nm de margem é o padrão atual. Se ainda houver
+artefatos (complexo muito elongado), aumente via linha de comando:
+
+```bash
+nextflow run main.nf --input samplesheet.csv --box_dist 2.5 -profile conda,local
+```
+
 ---
 
 ## 10. Notas técnicas
 
-Correções específicas implementadas e validadas com DN1937+GORE4 (LALAK):
+Correções específicas implementadas e validadas:
 
-| Problema                        | Solução                                                                |
-|---------------------------------|------------------------------------------------------------------------|
-| HIS com protonação errada       | Forma automática por pH: HIP/HID/HIE conforme pKa da His (~6)         |
-| CYS em pontes dissulfeto        | Auto-detecção por distância SG–SG < 2,5 Å → renomeada para CYX        |
-| Ligante transladado para centro | Pose dockada **preservada** (não transloca para o centróide)           |
-| Conflito de numeração de resíduos | Ligante renumerado para vir após o receptor                          |
-| Chain IDs ausentes              | Cadeia A=receptor, B=ligante, TER entre as cadeias                    |
-| Spike no RMSD por PBC           | `nojump` aplicado antes de `mol -center`                               |
-| PME GPU em minimização          | Desabilitado para o integrador `steep` (não suportado)                 |
-| tc-grps incorreto               | Usa `Protein Non-Protein` (peptídeo já pertence ao grupo Protein)      |
+| Problema                          | Solução                                                                |
+|-----------------------------------|------------------------------------------------------------------------|
+| HIS com protonação errada         | Forma automática por pH: HIP/HID/HIE conforme pKa da His (~6)         |
+| CYS em pontes dissulfeto          | Auto-detecção por distância SG–SG < 2,5 Å → renomeada para CYX        |
+| Ligante transladado para centro   | Pose dockada **preservada** (não transloca para o centróide)           |
+| Conflito de numeração de resíduos | Ligante renumerado para vir após o receptor                            |
+| Chain IDs ausentes                | Cadeia A=receptor, B=ligante, TER entre as cadeias                    |
+| Spike no RMSD por PBC             | `nojump` aplicado antes de `mol -center`                               |
+| PME GPU em minimização            | Desabilitado para o integrador `steep` (não suportado)                 |
+| tc-grps incorreto                 | Usa `Protein Non-Protein` (peptídeo já pertence ao grupo Protein)      |
+| Propagação de meta entre módulos  | Dados de resíduos (triad_1..4) injetados via canal separado (`ch_triad_input`), não no mapa `meta` global |
 
 ---
 
