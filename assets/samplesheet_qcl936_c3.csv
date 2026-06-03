@@ -1,0 +1,2 @@
+sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
+qcl936-gore4-c3,/home/eulalio/gromacs/MD-gromacs/QCL936-GORE4_NEW/qcl936_c3_receptor.pdb,/home/eulalio/gromacs/MD-gromacs/QCL936-GORE4_NEW/qcl936_c3_ligante.pdb,92,114,211,241
