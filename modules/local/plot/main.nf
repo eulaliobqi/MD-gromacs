@@ -11,10 +11,11 @@ process PLOT {
     tuple val(meta), path("*.png"), emit: figures
 
     script:
-    def titulo = "${meta.id} - DM ${params.time_ns} ns @ pH ${params.pH}"
+    def titulo = "${meta.id} - DM ${params.time_ns} ns @ pH ${params.pH} (KCl ${params.nacl_conc}M)"
     """
     plot_results.py \\
         --analise-dir . \\
-        --titulo "${titulo}"
+        --titulo "${titulo}" \\
+        --window-ns ${params.window_ns}
     """
 }

@@ -61,7 +61,6 @@ workflow {
         .join(POSTPROCESS.out.fit, by: [0])
 
     ANALYSES(ch_analyses)
-    PLOT(ANALYSES.out.xvg)
 
     // ── Análises estendidas (distâncias tríade + bolsão S1) ───────────────────
     ch_extended = POSTPROCESS.out.fit
@@ -76,4 +75,16 @@ workflow {
         }
 
     ANALYSES_TRIAD(ch_triad_input)
+
+    // ── Plot aguarda ANALYSES_TRIAD para incluir dist_r*.xvg + triad_info.txt ─
+    ch_plot_input = ANALYSES.out.xvg
+        .join(ANALYSES_TRIAD.out.triad, by: [0])
+        .join(ANALYSES_TRIAD.out.info,  by: [0])
+        .map { meta, xvgs, ndx, d1, d2, d3, d4, s1, s2, s3, s4, info ->
+            def all_files = (xvgs instanceof List ? xvgs : [xvgs]) +
+                            [d1, d2, d3, d4, s1, s2, s3, s4, info]
+            tuple(meta, all_files, ndx)
+        }
+
+    PLOT(ch_plot_input)
 }
