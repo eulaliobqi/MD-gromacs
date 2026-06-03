@@ -9,7 +9,9 @@ process ANALYSES_TRIAD {
 
     output:
     tuple val(meta), path("dist_r1.xvg"), path("dist_r2.xvg"),
-                     path("dist_r3.xvg"), path("dist_r4.xvg"), emit: triad
+                     path("dist_r3.xvg"), path("dist_r4.xvg"),
+                     path("sasa_r1.xvg"), path("sasa_r2.xvg"),
+                     path("sasa_r3.xvg"), path("sasa_r4.xvg"), emit: triad
     tuple val(meta), path("triad_info.txt"), emit: info
 
     script:
@@ -59,6 +61,20 @@ MNDX
     printf 'Ligante\\nRes4_Cat\\n' | ${params.gmx_cmd} mindist \\
         -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -od dist_r4.xvg -tu ns
 
-    echo "[OK] Distâncias concluídas para ${meta.id}" >&2
+    # SASA por resíduo catalítico (surface = proteína completa; output = resíduo individual)
+    # Valores baixos indicam resíduo enterrado/em contato com ligante
+    printf 'Protein\\nRes1_Cat\\n' | ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -o sasa_r1.xvg -tu ns
+
+    printf 'Protein\\nRes2_Cat\\n' | ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -o sasa_r2.xvg -tu ns
+
+    printf 'Protein\\nRes3_Cat\\n' | ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -o sasa_r3.xvg -tu ns
+
+    printf 'Protein\\nRes4_Cat\\n' | ${params.gmx_cmd} sasa \\
+        -s ${md_tpr} -f ${md_fit_xtc} -n triad.ndx -o sasa_r4.xvg -tu ns
+
+    echo "[OK] Distâncias e SASA catalíticos concluídos para ${meta.id}" >&2
     """
 }
