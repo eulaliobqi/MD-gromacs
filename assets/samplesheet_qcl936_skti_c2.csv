@@ -1,2 +1,2 @@
 sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
-qcl936-skti-c2,/home/eulalio/gromacs/MD-gromacs/QCL936-SKTI-NEW/receptor_qcl936.pdb,/home/eulalio/gromacs/MD-gromacs/QCL936-SKTI-NEW/ligante_skti.pdb,92,114,211,241
+qcl936-skti-c2,/home/eulalio/gromacs/MD-gromacs/QCL936-SKTI-NEW/receptor_qcl936.pdb,/home/eulalio/gromacs/MD-gromacs/QCL936-SKTI-NEW/ligante_skti.pdb,92,142,247,241
