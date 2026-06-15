@@ -1,0 +1,2 @@
+sample_id,receptor,ligand,triad_1,triad_2,triad_3,triad_4
+xp273-skti-c2,/home/eulalio/gromacs/MD-gromacs/XP273-SKTI_NEW/receptor_xp273.pdb,/home/eulalio/gromacs/MD-gromacs/XP273-SKTI_NEW/ligante_skti.pdb,83,132,234,229
