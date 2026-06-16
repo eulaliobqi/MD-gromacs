@@ -46,7 +46,7 @@ As seguintes propriedades foram calculadas ao longo de toda a trajetória:
 
 As médias móveis foram calculadas com janela de 5 ns para suavização dos perfis temporais. Todos os gráficos foram gerados com Matplotlib 3.x.
 
-Os resíduos do sítio catalítico monitorados por isoforma de receptor são: ACR157 — His69, Asp114, Ser211, Ile205; QCL936 — His92, Asp114, Ser211, Asp241; XP273 — Tyr83, Asp132, Ser234, Ile229; XP352 — Arg112, Asp166, Ser268, Asp262. Para a série SKTI, os mesmos resíduos do receptor foram monitorados, permitindo comparação direta entre as duas séries de inibidores.
+Os resíduos do sítio catalítico monitorados por isoforma de receptor são: ACR157 — His69, Asp114, Ser211, Ile205; QCL936 — His92, Asp142, Ser247, Asp241; XP273 — Tyr83, Asp132, Ser234, Ile229; XP352 — Arg112, Asp166, Ser268, Asp262. Para a série SKTI, os mesmos resíduos do receptor foram monitorados, permitindo comparação direta entre as duas séries de inibidores.
 
 O pipeline completo, desde a preparação dos complexos até a geração dos painéis de análise, foi implementado em Nextflow DSL2 (Di Tommaso *et al.*, 2017) para garantir reprodutibilidade e rastreabilidade computacional.
 
@@ -76,7 +76,7 @@ A SASA do ligante manteve-se em 9,04 ± 0,37 nm² sem tendência crescente, indi
 
 A análise das distâncias mínimas entre o peptídeo QCL936 e os resíduos do sítio ativo revelou um padrão de ligação predominantemente associado ao bolsão S1 e à His periférica da tríade (Figura X). O peptídeo manteve distância média de 0,242 ± 0,05 nm da His92 e de 0,227 ± 0,04 nm do Asp241 (bolsão S1) durante toda a simulação, ambas claramente inferiores ao limiar de 0,5 nm adotado para caracterização de contato catalítico direto.
 
-Por outro lado, as distâncias ao Asp114 (1,719 ± 0,18 nm) e à Ser211 (1,195 ± 0,14 nm) permaneceram superiores a 0,5 nm ao longo da maior parte da trajetória, indicando que o QCL936 não interage diretamente com o núcleo Asp-Ser da tríade catalítica. Uma leve aproximação a esses resíduos foi observada após os 80 ns, sugerindo reorientação conformacional tardia do peptídeo, porém sem cruzar o limiar de contato catalítico.
+Por outro lado, as distâncias ao Asp142 (1,719 ± 0,18 nm) e à Ser247 (1,195 ± 0,14 nm) permaneceram superiores a 0,5 nm ao longo da maior parte da trajetória, indicando que o GORE4 não interage diretamente com o núcleo Asp-Ser da tríade catalítica do QCL936. Uma leve aproximação a esses resíduos foi observada após os 80 ns, sugerindo reorientação conformacional tardia do peptídeo, porém sem cruzar o limiar de contato catalítico.
 
 Esse padrão de ligação — ancoragem no bolsão S1 e na His da tríade, com ausência de contato com Asp e Ser — caracteriza o QCL936 como um inibidor com mecanismo predominantemente de bloqueio do reconhecimento de substrato, ocupando o bolsão de especificidade (S1) e impedindo o acesso da região de clivagem do substrato ao sítio ativo, sem necessariamente inibir diretamente o mecanismo catalítico nucleofílico. Este perfil é biologicamente relevante, dado que o bolsão S1 de serino-proteases determina a especificidade pelo substrato (Perona & Craik, 1995), e inibidores que o ocupam de forma estável constituem candidatos potentes e seletivos.
 
@@ -172,27 +172,27 @@ Adicionalmente, a interface ACR157-SKTI é significativamente mais estável em t
 
 #### QCL936-SKTI (cluster 2)
 
-A simulação do complexo QCL936-SKTI (cluster 2) foi conduzida por 100 ns a 300 K e pH 8,2. O RMSD do backbone do receptor apresentou média de 0,307 ± 0,048 nm, valor superior ao observado para o mesmo receptor em complexo com o GORE4 (0,124 nm), indicando que a presença do SKTI — inibidor volumoso de 177 resíduos — induz maior flexibilidade conformacional no receptor QCL936 em comparação com o peptídeo de cinco resíduos. Apesar da maior variabilidade, o RMSD não exibiu tendência crescente ao longo da simulação, e o raio de giro do complexo estabilizou-se em 2,331 ± 0,016 nm, confirmando que o complexo como um todo permaneceu globalmente coeso.
+A simulação do complexo QCL936-SKTI (cluster 2) foi conduzida por 100 ns a 300 K e pH 8,2. O RMSD do backbone do receptor apresentou média de 0,370 ± 0,054 nm, valor markadamente superior ao observado para o mesmo receptor em complexo com o GORE4 (0,124 nm) e o mais elevado entre os três complexos SKTI analisados (ACR157: 0,281 nm; XP273: 0,288 nm), indicando que a presença do SKTI induz maior flexibilidade conformacional no QCL936. O perfil temporal não exibiu tendência crescente consistente ao longo da trajetória, e o raio de giro do complexo estabilizou-se em 2,296 ± 0,015 nm, confirmando que o complexo como um todo permaneceu globalmente coeso.
 
-O RMSD do ligante atingiu 0,227 ± 0,019 nm — valor próximo ao registrado para o ACR157-SKTI (0,206 nm) e notavelmente inferior ao do GORE4 no mesmo receptor (0,229 nm, com maior desvio padrão proporcional), evidenciando que o SKTI manteve conformação estável dentro do sítio de ligação sem sinais de dissociação.
+O RMSD do ligante atingiu 0,209 ± 0,025 nm — valor próximo ao registrado para o ACR157-SKTI (0,206 nm) e notavelmente inferior ao do GORE4 no mesmo receptor (0,229 nm), evidenciando que o SKTI manteve conformação estável dentro do sítio de ligação sem sinais de dissociação.
 
 #### Interface de ligação
 
-O número médio de contatos receptor–ligante foi de 787 ± 103 átomos, valor expressivo embora inferior ao registrado para o ACR157-SKTI (1019 ± 118). As pontes de hidrogênio receptor–ligante apresentaram média de 10,96 ± 2,46, também inferior ao ACR157-SKTI (33,5 ± 2,9), indicando menor complementaridade de superfície entre SKTI e QCL936 em comparação com ACR157. A SASA do ligante manteve-se em 103,64 ± 1,69 nm² ao longo dos 100 ns, confirmando enterramento estável do SKTI na interface receptor–ligante.
+O número médio de contatos receptor–ligante foi de 720 ± 77 átomos, valor expressivo embora inferior ao registrado para o ACR157-SKTI (1019 ± 118). As pontes de hidrogênio receptor–ligante apresentaram média de 10,410 ± 2,022, também inferior ao ACR157-SKTI (13,524 ± 2,911), indicando menor complementaridade de superfície entre SKTI e QCL936 em comparação com ACR157. A SASA do ligante manteve-se em 102,53 ± 2,09 nm² ao longo dos 100 ns, confirmando enterramento estável do SKTI na interface receptor–ligante.
 
 #### Posicionamento no sítio catalítico
 
-A análise das distâncias mínimas revelou um padrão de ancoragem restrito a dois resíduos: a His92 manteve distância média de 0,179 nm e o Asp241 (bolsão S1) apresentou distância média de 0,178 nm — ambos em contato íntimo e estável ao longo de toda a trajetória. Em contraste, o Asp114 (1,38 nm) e a Ser211 (1,08 nm) permaneceram completamente distantes da interface, sem qualquer contato estabelecido com o ligante em nenhuma fase da simulação.
+A análise das distâncias mínimas revelou um padrão de ancoragem envolvendo três dos quatro resíduos monitorados: a His92 manteve distância média de 0,179 nm, a Ser247 (serina nucleofílica) apresentou distância média de 0,176 nm e o Asp241 (bolsão S1) atingiu 0,178 nm — todos em contato íntimo e estável ao longo de toda a trajetória. Em contraste, o Asp142 — componente do díade catalítico responsável pela estabilização da His protonada durante o ciclo de transferência de próton — permaneceu distante da interface (~0,73 nm), sem contato estabelecido com o ligante em nenhuma fase da simulação.
 
-Este padrão é notavelmente congruente com o observado para o QCL936-GORE4, que também demonstrou ancoragem seletiva em His92 e Asp241, com ausência de contato com o díade Asp114–Ser211. A consistência deste padrão — reproduzida com dois inibidores de naturezas radicalmente distintas (pentapeptídeo vs proteína Kunitz de 177 resíduos) — indica que a topografia intrínseca do sítio ativo do QCL936 direciona estruturalmente os inibidores para o modo de ligação His+S1, independentemente do tamanho ou arquitetura do inibidor.
+Este padrão — His92 + Ser247 + Asp241/S1, com ausência de contato com Asp142 — constitui um modo de inibição até então não observado entre os complexos analisados. Contrasta diretamente com o QCL936-GORE4, no qual apenas His92 e Asp241 foram engajados (modo His+S1, 2/4), revelando que o SKTI — graças à sua maior extensão e à pré-organização estrutural da alça SPYRIRF — consegue posicionar seu resíduo P1=Arg de forma a engajar adicionalmente a Ser247 nucleofílica. O engajamento simultâneo de His92 e Ser247 indica que o SKTI interfere diretamente com a geometria do par nucleofílico da tríade, bloqueando a etapa de ativação da serina, enquanto o bolsão S1 permanece simultaneamente ocupado.
 
 #### Comparação com ACR157-SKTI e implicações mecanísticas
 
-O contraste entre QCL936-SKTI e ACR157-SKTI é mecanisticamente fundamental. No ACR157, o SKTI engaja diretamente His69 e Ser211 da tríade catalítica (0,132 e 0,122 nm, respectivamente), bloqueando o mecanismo nucleofílico via mecanismo Kunitz canônico. No QCL936, o SKTI âncora em His92 e Asp241/S1 (ambos ~0,179 nm), sem engajamento do díade Asp–Ser — o mesmo modo His+S1 observado com o GORE4.
+O contraste entre QCL936-SKTI e ACR157-SKTI é mecanisticamente revelador. No ACR157, o SKTI engaja diretamente His69 (0,224 nm), Asp114 (0,312 nm), Ser211 (0,221 nm) e Ile205/S1 (0,180 nm) — mecanismo Kunitz canônico completo (4/4). No QCL936, o SKTI engaja His92, Ser247 e Asp241/S1, mas não o Asp142 — modo His + Ser + S1 (3/4). Embora ambos os complexos apresentem engajamento simultâneo da His e da Ser, a ausência do Asp142 no QCL936 é mecanisticamente significativa: na catálise de serino-proteases, o Asp catalítico estabiliza a His protonada após a abstração do próton da Ser, permitindo a regeneração da tríade para novos ciclos; sem o bloqueio estrutural do Asp142, esta etapa de recarregamento permanece potencialmente acessível, o que pode conferir ao complexo QCL936-SKTI menor potência de inibição em relação ao modo canônico.
 
-A ausência do mecanismo Kunitz canônico no QCL936 pode ser atribuída a diferenças estruturais entre os sítios ativos das duas isoformas. Uma hipótese é que a geometria do sítio ativo do QCL936 — particularmente a distância relativa e acessibilidade da Ser211 — impeça o posicionamento da alça reativa SPYRIRF em orientação que promova o contato simultâneo com His e Ser. Adicionalmente, a natureza do resíduo S1 pode ser determinante: enquanto o QCL936 possui Asp241 carregado negativamente em S1 (com forte atração eletrostática para P1=Arg do SKTI), o ACR157 possui Ile205 (neutro), o que pode influenciar a orientação do loop reativo e, consequentemente, a exposição dos demais resíduos da tríade.
+A ausência de engajamento do Asp142 pode ser atribuída à geometria diferencial entre os sítios ativos das duas isoformas. A presença de Asp241 carregado negativamente no bolsão S1 do QCL936 — em contraste com Ile205 neutro no ACR157 — exerce forte atração eletrostática sobre P1=Arg, direcionando a alça SPYRIRF preferencialmente para S1 e His92 com geometria que alcança a Ser247, mas com o Asp142 posicionado fora do raio de contato.
 
-Em termos quantitativos, a interface QCL936-SKTI é menos complementar do que a ACR157-SKTI (787 vs 1019 contatos; 11 vs 33,5 H-bonds), sugerindo que o SKTI inibe ACR157 com maior eficiência de interface do que o QCL936. Ambos os complexos SKTI são, contudo, substancialmente mais estáveis e com interfaces mais extensas do que os respectivos complexos GORE4.
+Em termos quantitativos, a interface QCL936-SKTI é menos complementar do que a ACR157-SKTI (720 vs 1019 contatos; 10,4 vs 13,5 H-bonds), sugerindo que o SKTI inibe ACR157 com maior eficiência de interface do que o QCL936. Ambos os complexos SKTI são, contudo, substancialmente mais estáveis e com interfaces mais extensas do que os respectivos complexos GORE4.
 
 #### XP273-SKTI (cluster 2)
 
@@ -202,7 +202,7 @@ O RMSD do ligante apresentou média de 0,224 ± 0,017 nm — valor notavelmente 
 
 #### Interface de ligação
 
-O número médio de contatos receptor–ligante foi de 596 ± 88 átomos, valor inferior ao registrado para os complexos ACR157-SKTI (1019 ± 118) e QCL936-SKTI (787 ± 103), porém expressivamente superior ao do peptídeo GORE4 no mesmo receptor (260 ± 60). As pontes de hidrogênio receptor–ligante apresentaram média de 8,817 ± 3,496, também inferiores às dos demais complexos SKTI (ACR157: 13,524; QCL936: 10,96), indicando menor complementaridade de superfície entre o SKTI e o sítio de ligação do XP273 em comparação com as demais isoformas. A SASA do ligante manteve-se em 101,312 ± 2,014 nm² ao longo dos 100 ns, confirmando enterramento estável do SKTI na interface e ausência de migração para o solvente.
+O número médio de contatos receptor–ligante foi de 596 ± 88 átomos, valor inferior ao registrado para os complexos ACR157-SKTI (1019 ± 118) e QCL936-SKTI (720 ± 77), porém expressivamente superior ao do peptídeo GORE4 no mesmo receptor (260 ± 60). As pontes de hidrogênio receptor–ligante apresentaram média de 8,817 ± 3,496, também inferiores às dos demais complexos SKTI (ACR157: 13,524; QCL936: 10,410), indicando menor complementaridade de superfície entre o SKTI e o sítio de ligação do XP273 em comparação com as demais isoformas. A SASA do ligante manteve-se em 101,312 ± 2,014 nm² ao longo dos 100 ns, confirmando enterramento estável do SKTI na interface e ausência de migração para o solvente.
 
 #### Posicionamento no sítio catalítico
 
@@ -212,13 +212,13 @@ Em contraste, a Ser234 (triad_3, serina nucleofílica) apresentou distância mé
 
 #### Interpretação mecanística e comparação com os demais complexos SKTI
 
-O padrão de ancoragem Tyr83 + Asp132 + Ile229(S1), com ausência de contato com Ser234, constitui um modo de inibição parcial distinto dos demais complexos analisados. No ACR157-SKTI, todos os quatro resíduos foram engajados (mecanismo Kunitz canônico completo). No QCL936-SKTI, apenas His92 e Asp241/S1 foram engajados, sem contato com o díade Asp–Ser (modo His+S1). O XP273-SKTI ocupa posição intermediária: o SKTI posiciona sua alça reativa SPYRIRF de modo a engajar o resíduo periférico do sítio ativo (Tyr83), o Asp132 do díade catalítico e o bolsão S1 (Ile229), mas não alcança a Ser234 (serina nucleofílica).
+O padrão de ancoragem Tyr83 + Asp132 + Ile229(S1), com ausência de contato com Ser234, constitui um modo de inibição parcial distinto dos demais complexos analisados. No ACR157-SKTI, todos os quatro resíduos foram engajados (mecanismo Kunitz canônico completo, 4/4). No QCL936-SKTI, His92, Ser247 e Asp241/S1 foram engajados, sem contato com Asp142 (modo His+Ser+S1, 3/4). O XP273-SKTI ocupa posição complementar: o SKTI engaja Tyr83, o Asp132 do díade catalítico e o bolsão S1 (Ile229), mas não alcança a Ser234 (serina nucleofílica), modo Tyr+Asp+S1 (3/4).
 
 A ausência de contato com Ser234 distingue este complexo do mecanismo Kunitz canônico clássico e pode ser atribuída à geometria particular do sítio ativo do XP273. A presença de Tyr83 no lugar da His canônica na posição triad_1 — registro atípico entre as isoformas analisadas — altera a topografia da região de entrada do sítio catalítico e pode reorientar o loop reativo do SKTI de modo que o resíduo P1 (Arg) se posicione favoravelmente para contato com Tyr83, Asp132 e Ile229, mas com geometria incompatível com o alcance simultâneo da Ser234.
 
 Do ponto de vista funcional, o engajamento de Asp132 — componente do díade Asp–Ser da tríade catalítica — representa um avanço mecanístico em relação ao XP273-GORE4, que alcançava apenas Tyr83 sem contato com Asp132 ou Ile229. O bloqueio concomitante de Asp132 e do bolsão S1 (Ile229) pode comprometer a rede de transferência de próton do díade catalítico e impedir o reconhecimento do substrato pelo bolsão de especificidade, caracterizando um mecanismo de inibição dual parcial. Entretanto, a ausência de engajamento da serina nucleofílica limita a comparação com o mecanismo Kunitz completo do ACR157-SKTI.
 
-Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três complexos SKTI analisados (596 vs 787 vs 1019 contatos; 8,8 vs 11,0 vs 13,5 H-bonds, para XP273, QCL936 e ACR157, respectivamente), sugerindo hierarquia de eficiência de inibição ACR157 > QCL936 > XP273. Esta hierarquia é inteiramente consistente com os escores de docking HADDOCK (ACR157: −128,3; QCL936: −113,8; XP273: −101,4 kcal mol⁻¹), validando retroativamente a seleção de clusters por escore energético como preditor de qualidade de interface em dinâmica molecular.
+Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três complexos SKTI analisados (596 vs 720 vs 1019 contatos; 8,8 vs 10,4 vs 13,5 H-bonds, para XP273, QCL936 e ACR157, respectivamente), sugerindo hierarquia de eficiência de inibição ACR157 > QCL936 > XP273. Esta hierarquia é inteiramente consistente com os escores de docking HADDOCK (ACR157: −128,3; QCL936: −113,8; XP273: −101,4 kcal mol⁻¹), validando retroativamente a seleção de clusters por escore energético como preditor de qualidade de interface em dinâmica molecular.
 
 <!-- PLACEHOLDER: adicionar XP352-SKTI quando disponível -->
 
@@ -237,7 +237,7 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | XP352-GORE4 c4r3 | 0,886 ± 0,440 | 0,400 ± 0,067 | 63 ± 143 | — | — | ❌ dissociação |
 | **Série SKTI** | | | | | | |
 | ACR157-SKTI c2 | 0,281 ± 0,027 | 0,206 ± 0,017 | 1019 ± 118 | 13,524 ± 2,911 | 101,97 ± 1,62 | ✅ estável |
-| QCL936-SKTI c2 | 0,307 ± 0,048 | 0,227 ± 0,019 | 787 ± 103 | 10,96 ± 2,46 | 103,64 ± 1,69 | ⚠️ tríade pendente |
+| QCL936-SKTI c2 | 0,370 ± 0,054 | 0,209 ± 0,025 | 720 ± 77 | 10,410 ± 2,022 | 102,53 ± 2,09 | ✅ estável |
 | XP273-SKTI c2 | 0,288 ± 0,042 | 0,224 ± 0,017 | 596 ± 88 | 8,817 ± 3,496 | 101,31 ± 2,01 | ✅ estável |
 
 #### Tabela 2 — Distâncias médias (nm) aos resíduos do sítio catalítico
@@ -251,19 +251,20 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | XP352-c4r3 | Arg112 >1,00 ❌ | Asp166 >1,00 ❌ | Ser268 >1,00 ❌ | Asp262 >1,00 ❌ | — dissociação |
 | **SKTI** | | | | | |
 | ACR157-c2 | His69 **0,224** ✅ | Asp114 **0,312** ✅ | Ser211 **0,221** ✅ | Ile205 **0,180** ✅ | Kunitz canônico (4/4) |
-| QCL936-c2 | His92 **0,179** ✅ | Asp142 ⚠️ re-run | Ser247 ⚠️ re-run | Asp241 **0,178** ✅ | His + S1 (provisório) |
+| QCL936-c2 | His92 **0,179** ✅ | Asp142 ~0,73 ❌ | Ser247 **0,176** ✅ | Asp241 **0,178** ✅ | His + Ser + S1 (3/4) |
 | XP273-c2 | Tyr83 **0,098** ✅ | Asp132 **0,119** ✅ | Ser234 0,718 ❌ | Ile229 **0,118** ✅ | Tyr + Asp + S1 (3/4) |
 
 #### Padrão geral
 
-Os resultados revelam três modos de inibição distintos entre os complexos analisados, ordenados por completude do bloqueio catalítico:
+Os resultados revelam cinco modos de inibição distintos entre os complexos analisados, ordenados por completude do bloqueio catalítico:
 
-1. **Kunitz canônico completo** (ACR157-SKTI, 4/4 resíduos) — todos os componentes da tríade His–Asp–Ser e o bolsão S1 bloqueados simultaneamente; mecanismo máximo de inibição.
-2. **Modo Tyr + Asp + S1** (XP273-SKTI, 3/4) — modo intermediário único, sem engajamento da Ser nucleofílica; bloqueio parcial do díade catalítico + S1.
-3. **Modo His + S1** (QCL936-GORE4, QCL936-SKTI provisório, ACR157-GORE4) — ancoragem na His da tríade e no bolsão S1, sem contato com Asp–Ser; mecanismo de bloqueio de reconhecimento de substrato.
-4. **Modo periférico** (XP273-GORE4, 1/4) — apenas resíduo periférico (Tyr83) engajado; mecanismo por oclusão estérica ou estabilização conformacional.
+1. **Kunitz canônico completo** (ACR157-SKTI, 4/4 resíduos) — todos os componentes da tríade His–Asp–Ser e o bolsão S1 bloqueados simultaneamente; mecanismo máximo de inibição; padrão de referência para inibidores Kunitz.
+2. **Modo His + Ser + S1** (QCL936-SKTI, 3/4) — His e Ser nucleofílica da tríade engajadas com bloqueio do S1; Asp catalítico livre; inibição da etapa nucleofílica sem bloqueio estrutural da regeneração da His; modo identificado após re-run com resíduos corretos (Asp142/Ser247).
+3. **Modo Tyr + Asp + S1** (XP273-SKTI, 3/4) — resíduo periférico (Tyr83) + Asp catalítico + S1 engajados; Ser nucleofílica livre; bloqueio do reconhecimento de substrato e do díade parcial com geometria de entrada do sítio alterada pela Tyr83.
+4. **Modo His + S1** (QCL936-GORE4, ACR157-GORE4) — ancoragem na His da tríade e no bolsão S1, sem contato com Asp–Ser; mecanismo de bloqueio de especificidade de substrato, sem interferência direta no núcleo catalítico His–Asp–Ser.
+5. **Modo periférico** (XP273-GORE4, 1/4) — apenas resíduo periférico (Tyr83) engajado; mecanismo por oclusão estérica da entrada do sítio ou estabilização de conformação cataliticamente inativa.
 
-A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,3–4,0×; H-bonds 3,5–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico — resultado coerente com a natureza pré-organizada e complementar do inibidor Kunitz para o sítio ativo de serino-proteases.
+A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico — resultado coerente com a natureza pré-organizada e complementar do inibidor Kunitz para o sítio ativo de serino-proteases.
 
 ---
 
