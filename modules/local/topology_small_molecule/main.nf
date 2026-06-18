@@ -27,8 +27,7 @@ process TOPOLOGY_SMALL_MOLECULE {
     echo "  Receptor: \${NATOM_REC} átomos ATOM"
     echo "  BEN:      \${NATOM_BEN} átomos"
 
-    # 2. Topologia do receptor com AMBER99SB-ILDN
-    #    printf '0\n0\n' → seleciona N-terminal e C-terminal padrão
+    # 2. Topologia do receptor com AMBER99SB-ILDN (opcao 0 N/C terminal)
     printf '0\\n0\\n' | ${params.gmx_cmd} pdb2gmx \\
         -f receptor.pdb \\
         -o receptor.gro \\
