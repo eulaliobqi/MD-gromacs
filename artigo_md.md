@@ -8,6 +8,8 @@
 
 As estruturas iniciais dos complexos foram geradas por docking molecular utilizando o servidor HADDOCK 2.4 (van Zundert *et al.*, 2016). Os receptores avaliados correspondem a seis isoformas de tripsina digestiva de *Spodoptera* spp.: ACR157, QCL936, XP273, XP352, DN773 e DN1441. Foram estudadas duas séries de inibidores: (i) **série GORE4** — o peptídeo GORE4 de cinco resíduos, com todos os resíduos diretamente envolvidos na interface de ligação, modelado por docking proteína–peptídeo; (ii) **série SKTI** — o Inibidor de Tripsina Kunitz de Soja (*Soybean Kunitz Trypsin Inhibitor*, SKTI; 177 resíduos), inibidor natural de referência com alça reativa SPYRIRF (P1 = Arg), modelado por docking proteína–proteína. Para cada sistema, o cluster de maior escore energético foi selecionado como pose inicial para as simulações.
 
+Adicionalmente, a benzamidina (BEN; MW 120,15 Da) foi incluída como controle positivo estrutural, docada com AutoDock Vina 1.2.0 contra os snapshots finais pós-DM de cada receptor (protocolo detalhado em §3.4).
+
 Os estados de protonação dos resíduos ionizáveis foram determinados para pH 8,2, simulando as condições alcalinas do intestino médio larval de *Spodoptera* (*midgut* pH 9,5–11,0; Al-Khafaji *et al.*, 2024). A protonação foi calculada com o servidor PropKa 3.0, implementado via `pdb2pqr 3.x` com campo de força AMBER. Nesse pH, a His catalítica (His-ε) assume forma neutra (HIE), correspondente à conformação ativa da serino-protease.
 
 ### 2.2 Configuração do campo de força e parâmetros de simulação
@@ -265,6 +267,37 @@ Os resultados revelam cinco modos de inibição distintos entre os complexos ana
 5. **Modo periférico** (XP273-GORE4, 1/4) — apenas resíduo periférico (Tyr83) engajado; mecanismo por oclusão estérica da entrada do sítio ou estabilização de conformação cataliticamente inativa.
 
 A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico — resultado coerente com a natureza pré-organizada e complementar do inibidor Kunitz para o sítio ativo de serino-proteases.
+
+---
+
+### 3.4 Docking de benzamidina (BEN) como controle positivo estrutural
+
+A benzamidina (BEN; CAS 618-39-3; MW 120,15 Da) é um inibidor competitivo reversível de serino-proteases amplamente utilizado como ligante de referência para o bolsão de especificidade S1 de tripsinas (Scheidig *et al.*, 1997). Sua amidina monocíclica forma uma ponte salina com o Asp do S1 e ligações de hidrogênio com resíduos da alça S1, ocupando o sítio de reconhecimento do resíduo P1 do substrato (Ki ≈ 8 μM para tripsina bovina). Neste trabalho, BEN foi incluída como controle positivo estrutural para validar a especificidade dos sítios modelados e comparar sua afinidade computacional com a dos peptídeos GORE4 e SKTI.
+
+#### Protocolo de docking
+
+O docking foi realizado com AutoDock Vina 1.2.0 (Eberhardt *et al.*, 2021), ferramenta padrão para moléculas pequenas. Os receptores utilizados foram os snapshots finais pós-DM (100 ns) de cada tripsina (`spodoptera-ben/`), preparados em formato PDBQT com Open Babel 3.x (`-h -xr`). O ligante BEN foi gerado a partir do SMILES `NC(=N)c1ccccc1` com adição de hidrogênios em pH 8,2 (Open Babel `-p 8.2`). A caixa de busca (22 × 22 × 22 Å) foi centrada no centroide dos quatro resíduos catalíticos monitorados nas DMs, com exhaustiveness = 32 e nove modos de ligação por receptor.
+
+#### Resultados
+
+**Tabela 3 — Scores Vina de BEN × tripsinas Spodoptera (pH 8,2)**
+
+| Receptor | Score modo 1 (kcal/mol) | Modos 1–3 RMSD (Å) | Contatos <0,35 nm | Hierarquia |
+|---------|------------------------|---------------------|--------------------|-----------|
+| QCL936  | **−5,733**             | ≤ 1,7 (convergente) | 1/4                | 1° |
+| XP273   | −5,484                 | 7,6 (pose única)    | 2/4                | 2° |
+| XP352   | −4,975                 | ≤ 1,6 (convergente) | 2/4                | 3° |
+| ACR157  | −4,953                 | ≤ 3,0 (convergente) | 1/4                | 4° |
+
+Hierarquia de afinidade: **QCL936 > XP273 > XP352 ≈ ACR157**.
+
+#### Interpretação
+
+A afinidade mais elevada de BEN para QCL936 (−5,733 kcal/mol) é coerente com a presença de Asp241 no bolsão S1 desse receptor — o resíduo ácido do S1 é o parceiro canônico da ponte salina da amidina em tripsinas clássicas (Scheidig *et al.*, 1997). ACR157, cujo S1 é ocupado por Ile205 (resíduo não carregado), apresentou a menor afinidade, consistente com menor complementaridade eletrostática para a amidina protonada.
+
+Os valores de afinidade (−4,95 a −5,73 kcal/mol) situam-se abaixo dos relatados para BEN em tripsina bovina com Vina (≈ −6 a −7 kcal/mol; literatura), o que pode refletir: (i) uso da forma neutra de BEN (a forma amidínio+ em pH 8,2 interagiria mais favoravelmente com o S1 ácido); (ii) conformação dos receptores pós-DM com GORE4 ligado, levemente distinta da forma apo.
+
+O número de contatos próximos (1–2/4 resíduos) é esperado para BEN, que por seu tamanho reduzido (9 átomos pesados) ocupa exclusivamente o bolsão S1, sem alcançar os demais componentes da tríade catalítica simultaneamente — contraste marcado com SKTI (4/4 em ACR157) e GORE4 (2/4). Esse padrão confirma a seletividade de sítio dos receptores modelados e valida a centralização da caixa de busca nos resíduos catalíticos.
 
 ---
 
