@@ -75,8 +75,8 @@ process TOPOLOGY_SMALL_MOLECULE {
         echo "ERRO: merge_small_molecule_topology.py falhou"; exit 1
     fi
 
-    # 5. Copiar ITPs para publishDir
-    cp posre_Protein.itp .
+    # 5. Copiar ITPs para publishDir (posre_Protein.itp ja esta na workdir — ignorar erro)
+    cp posre_Protein.itp . 2>/dev/null || true
     cp BEN.acpype/BEN_GMX.itp .
     cp BEN.acpype/posre_BEN.itp .
 
