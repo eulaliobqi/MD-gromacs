@@ -35,17 +35,33 @@ TRIAD_MAP = {
 
 
 def parse_vina_scores(pdbqt_path):
-    """Extrai (modo, afinidade, rmsd_lb, rmsd_ub) do arquivo _out.pdbqt."""
+    """Extrai (modo, afinidade, rmsd_lb, rmsd_ub) do arquivo _out.pdbqt.
+
+    Suporta dois formatos:
+    - Vina >= 1.2: linha 'REMARK VINA RESULT: aff rmsd_lb rmsd_ub'
+    - Vina customizado (design-inibidores): sem REMARK, usa .log associado
+    """
     scores = []
+
+    # Formato 1: REMARK VINA RESULT no PDBQT (Vina 1.2+)
     with open(pdbqt_path) as f:
         for line in f:
-            m = re.match(r"REMARK VINA RESULT:\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)", line)
+            m = re.match(r"REMARK VINA RESULT:\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)", line)
             if m:
                 mode = len(scores) + 1
-                affinity = float(m.group(1))
-                rmsd_lb  = float(m.group(2))
-                rmsd_ub  = float(m.group(3))
-                scores.append((mode, affinity, rmsd_lb, rmsd_ub))
+                scores.append((mode, float(m.group(1)), float(m.group(2)), float(m.group(3))))
+    if scores:
+        return scores
+
+    # Formato 2: log capturado via stdout (Vina customizado, sem REMARK)
+    log_path = str(pdbqt_path).replace("_out.pdbqt", "_vina.log")
+    if os.path.exists(log_path):
+        with open(log_path) as f:
+            for line in f:
+                m = re.match(r"^\s+(\d+)\s+([-\d.]+)\s+[-\d.]+\s+[-\d.]+", line)
+                if m:
+                    mode = int(m.group(1))
+                    scores.append((mode, float(m.group(2)), 0.0, 0.0))
     return scores
 
 

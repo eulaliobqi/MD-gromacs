@@ -61,13 +61,14 @@ def centroid(coords_dict):
 
 
 def convert_receptor(pdb_path, pdbqt_path):
-    """Converte receptor PDB → PDBQT com obabel (modo receptor, cargas Gasteiger)."""
+    """Converte receptor PDB → PDBQT com obabel (modo receptor, adiciona H polares)."""
     cmd = [
         "obabel",
         "-ipdb", str(pdb_path),
         "-opdbqt",
         "-O", str(pdbqt_path),
-        "-xr",        # modo receptor: não rotacionar torsões
+        "-h",         # adiciona hidrogênios polares (necessário para Vina)
+        "-xr",        # modo receptor: torsões fixas
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -151,10 +152,9 @@ def main():
         exhaustiveness=args.exhaustiveness,
         cpu=args.cpu,
     )
-    # adicionar out ao conf
+    # adicionar out ao conf (sem log = — versão Vina customizada não suporta --log)
     with open(conf_path, "a") as f:
         f.write(f"\nout = {out_pdbqt}\n")
-        f.write(f"log = {str(res_dir / (args.name + '_ben_vina.log'))}\n")
 
     print(f"  Pronto. Rode: vina --config {conf_path}")
 
