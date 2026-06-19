@@ -228,19 +228,26 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 
 ### 3.3 Síntese comparativa — estabilidade, interface e modo de inibição
 
-#### Tabela 1 — Parâmetros de dinâmica molecular (médias ± DP, 100 ns)
+#### Tabela 1 — Parâmetros de dinâmica molecular (médias ± DP)
 
-| Sistema | RMSD bb (nm) | RMSD lig (nm) | Contatos | H-bonds | SASA lig (nm²) | Status |
-|---------|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Série GORE4** | | | | | | |
-| QCL936-GORE4 c3 | 0,124 ± 0,017 | 0,229 ± 0,042 | 340 ± 41 | 2,75 ± 1,01 | 9,04 ± 0,37 | ✅ estável |
-| ACR157-GORE4 c1 | 0,165 ± 0,016 | 0,393 ± 0,068 | 256 ± 38 | 1,90 ± 1,38 | 9,90 ± 0,47 | ✅ estável |
-| XP273-GORE4 c1 | 0,248 ± 0,045 | 0,317 ± 0,068 | 260 ± 60 | 3,19 ± 1,07 | 8,14 ± 0,37 | ✅ estável |
-| XP352-GORE4 c4r3 | 0,886 ± 0,440 | 0,400 ± 0,067 | 63 ± 143 | — | — | ❌ dissociação |
-| **Série SKTI** | | | | | | |
-| ACR157-SKTI c2 | 0,281 ± 0,027 | 0,206 ± 0,017 | 1019 ± 118 | 13,524 ± 2,911 | 101,97 ± 1,62 | ✅ estável |
-| QCL936-SKTI c2 | 0,370 ± 0,054 | 0,209 ± 0,025 | 720 ± 77 | 10,410 ± 2,022 | 102,53 ± 2,09 | ✅ estável |
-| XP273-SKTI c2 | 0,288 ± 0,042 | 0,224 ± 0,017 | 596 ± 88 | 8,817 ± 3,496 | 101,31 ± 2,01 | ✅ estável |
+| Sistema | Duração | RMSD bb (nm) | RMSD lig (nm) | Contatos | H-bonds | SASA lig (nm²) | Status |
+|---------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Série GORE4** | | | | | | | |
+| QCL936-GORE4 c3 | 100 ns | 0,124 ± 0,017 | 0,229 ± 0,042 | 340 ± 41 | 2,75 ± 1,01 | 9,04 ± 0,37 | ✅ estável |
+| ACR157-GORE4 c1 | 100 ns | 0,165 ± 0,016 | 0,393 ± 0,068 | 256 ± 38 | 1,90 ± 1,38 | 9,90 ± 0,47 | ✅ estável |
+| XP273-GORE4 c1 | 100 ns | 0,248 ± 0,045 | 0,317 ± 0,068 | 260 ± 60 | 3,19 ± 1,07 | 8,14 ± 0,37 | ✅ estável |
+| XP352-GORE4 c4r3 | 100 ns | 0,886 ± 0,440 | 0,400 ± 0,067 | 63 ± 143 | — | — | ❌ dissociação |
+| **Série SKTI** | | | | | | | |
+| ACR157-SKTI c2 | 100 ns | 0,281 ± 0,027 | 0,206 ± 0,017 | 1019 ± 118 | 13,524 ± 2,911 | 101,97 ± 1,62 | ✅ estável |
+| QCL936-SKTI c2 | 100 ns | 0,370 ± 0,054 | 0,209 ± 0,025 | 720 ± 77 | 10,410 ± 2,022 | 102,53 ± 2,09 | ✅ estável |
+| XP273-SKTI c2 | 100 ns | 0,288 ± 0,042 | 0,224 ± 0,017 | 596 ± 88 | 8,817 ± 3,496 | 101,31 ± 2,01 | ✅ estável |
+| **Série BEN (benzamidina)** | | | | | | | |
+| ACR157-BEN | 200 ns | 0,146 ± 0,019 | N.D.ª | 68,8 ± 72,4 | N.D.ᵇ | 2,74 ± 0,141 | ❌ dissociação ~95 ns |
+| QCL936-BEN | — | — | — | — | — | — | ⏳ pendente |
+| XP273-BEN | — | — | — | — | — | — | ⏳ pendente |
+| XP352-BEN | — | — | — | — | — | — | ⏳ pendente |
+
+ª RMSD interno de molécula rígida (não posicional); ᵇ `gmx hbond` incompatível com campo de força GAFF2.
 
 #### Tabela 2 — Distâncias médias (nm) aos resíduos do sítio catalítico
 
@@ -255,18 +262,23 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | ACR157-c2 | His69 **0,224** ✅ | Asp114 **0,312** ✅ | Ser211 **0,221** ✅ | Ile205 **0,180** ✅ | Kunitz canônico (4/4) |
 | QCL936-c2 | His92 **0,179** ✅ | Asp142 ~0,73 ❌ | Ser247 **0,176** ✅ | Asp241 **0,178** ✅ | His + Ser + S1 (3/4) |
 | XP273-c2 | Tyr83 **0,098** ✅ | Asp132 **0,119** ✅ | Ser234 0,718 ❌ | Ile229 **0,118** ✅ | Tyr + Asp + S1 (3/4) |
+| **BEN** | | | | | |
+| ACR157-BEN | His69 ~3,5ᶜ ❌ | Asp114 ~3,5ᶜ ❌ | Ser211 ~3,0ᶜ ❌ | Ile205 ~3,5ᶜ ❌ | Dissociação (~95 ns) |
+
+ᶜ Médias sobre 200 ns incluindo fase dissociada (95–200 ns); fase pré-dissociação (0–95 ns): Ile205 ~0,35 nm ⚠️, demais >0,70 nm ❌.
 
 #### Padrão geral
 
-Os resultados revelam cinco modos de inibição distintos entre os complexos analisados, ordenados por completude do bloqueio catalítico:
+Os resultados revelam seis modos de resposta distintos entre os sistemas analisados, ordenados por completude do bloqueio catalítico:
 
 1. **Kunitz canônico completo** (ACR157-SKTI, 4/4 resíduos) — todos os componentes da tríade His–Asp–Ser e o bolsão S1 bloqueados simultaneamente; mecanismo máximo de inibição; padrão de referência para inibidores Kunitz.
-2. **Modo His + Ser + S1** (QCL936-SKTI, 3/4) — His e Ser nucleofílica da tríade engajadas com bloqueio do S1; Asp catalítico livre; inibição da etapa nucleofílica sem bloqueio estrutural da regeneração da His; modo identificado após re-run com resíduos corretos (Asp142/Ser247).
+2. **Modo His + Ser + S1** (QCL936-SKTI, 3/4) — His e Ser nucleofílica da tríade engajadas com bloqueio do S1; Asp catalítico livre; inibição da etapa nucleofílica sem bloqueio estrutural da regeneração da His.
 3. **Modo Tyr + Asp + S1** (XP273-SKTI, 3/4) — resíduo periférico (Tyr83) + Asp catalítico + S1 engajados; Ser nucleofílica livre; bloqueio do reconhecimento de substrato e do díade parcial com geometria de entrada do sítio alterada pela Tyr83.
 4. **Modo His + S1** (QCL936-GORE4, ACR157-GORE4) — ancoragem na His da tríade e no bolsão S1, sem contato com Asp–Ser; mecanismo de bloqueio de especificidade de substrato, sem interferência direta no núcleo catalítico His–Asp–Ser.
 5. **Modo periférico** (XP273-GORE4, 1/4) — apenas resíduo periférico (Tyr83) engajado; mecanismo por oclusão estérica da entrada do sítio ou estabilização de conformação cataliticamente inativa.
+6. **Não-ligante** (ACR157-BEN) — dissociação completa antes de 100 ns; nenhum resíduo catalítico engajado de forma estável; ausência de inibição viável nas condições avaliadas.
 
-A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico — resultado coerente com a natureza pré-organizada e complementar do inibidor Kunitz para o sítio ativo de serino-proteases.
+A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico. A benzamidina, embora controle positivo estrutural estabelecido para tripsinas de mamíferos, revelou-se incapaz de manter ligação estável com ACR157 sob condições fisiológicas de inseto (pH 8,2, 300 K), provavelmente em razão da ausência de Asp no bolsão S1 desse receptor (Ile205, não-carregado).
 
 ---
 
@@ -298,6 +310,28 @@ A afinidade mais elevada de BEN para QCL936 (−5,733 kcal/mol) é coerente com 
 Os valores de afinidade (−4,95 a −5,73 kcal/mol) situam-se abaixo dos relatados para BEN em tripsina bovina com Vina (≈ −6 a −7 kcal/mol; literatura), o que pode refletir: (i) uso da forma neutra de BEN (a forma amidínio+ em pH 8,2 interagiria mais favoravelmente com o S1 ácido); (ii) conformação dos receptores pós-DM com GORE4 ligado, levemente distinta da forma apo.
 
 O número de contatos próximos (1–2/4 resíduos) é esperado para BEN, que por seu tamanho reduzido (9 átomos pesados) ocupa exclusivamente o bolsão S1, sem alcançar os demais componentes da tríade catalítica simultaneamente — contraste marcado com SKTI (4/4 em ACR157) e GORE4 (2/4). Esse padrão confirma a seletividade de sítio dos receptores modelados e valida a centralização da caixa de busca nos resíduos catalíticos.
+
+---
+
+### 3.4.2 Dinâmica molecular de benzamidina — ACR157-BEN (200 ns)
+
+Para investigar o comportamento dinâmico da BEN no receptor de menor afinidade prevista pelo docking, o complexo ACR157-BEN foi submetido a simulação de dinâmica molecular de 200 ns sob as mesmas condições das séries GORE4 e SKTI (300 K, pH 8,2, 0,10 M KCl, AMBER99SB-ILDN). A topologia do ligante foi gerada com campo de força GAFF2 (Wang *et al.*, 2004) via ACPYPE 2023 (Sousa da Silva & Vranken, 2012), com carga formal +1 (forma amidínio, pKa ≈ 11,6 em pH 8,2) e cargas atômicas parciais AM1-BCC (Jakalian *et al.*, 2002). A pose inicial correspondeu ao modo 1 do docking Vina (melhor escore, −4,953 kcal/mol).
+
+#### Estabilidade do receptor
+
+O RMSD do backbone do ACR157 estabilizou em 0,146 ± 0,019 nm ao longo dos 200 ns — valor inferior ao observado para ACR157-GORE4 (0,165 nm) e ACR157-SKTI (0,281 nm) —, indicando que o receptor manteve integridade estrutural durante toda a trajetória, independentemente do comportamento do ligante.
+
+#### Evento de dissociação a ~95 ns
+
+Até aproximadamente 95 ns, BEN manteve 60–150 contatos com ACR157, com o Ile205 (bolsão S1) em distância mínima de 0,3–0,4 nm (borderline de contato). Os demais resíduos catalíticos (His69 ~0,8 nm; Asp114 ~0,9 nm; Ser211 ~0,7 nm) permaneceram além do limiar de contato direto durante toda a fase de associação inicial — padrão coerente com BEN posicionada no bolsão S1, sem alcançar a tríade His–Asp–Ser. Ao atingir ~95 ns, ocorreu evento súbito e irreversível de dissociação: todas as distâncias aos resíduos catalíticos saltaram para 3–6 nm, os contatos colapsaram a zero, e BEN migrou ao solvente, permanecendo não-ligada pelos 105 ns restantes da trajetória.
+
+O valor médio de contatos ao longo dos 200 ns foi de 68,8 ± 72,4 átomos — desvio padrão superior à média, padrão diagnóstico de dissociação — refletindo o comportamento bimodal: fase de associação fraca (0–95 ns) seguida de estado dissociado (95–200 ns). A SASA da BEN foi de 2,74 ± 0,141 nm², coerente com o tamanho reduzido da molécula; durante a fase ligada, o enterramento foi parcial e transitório.
+
+#### Interpretação mecanística
+
+A dissociação de BEN no ACR157 tem fundamento estrutural direto: o bolsão S1 desse receptor é ocupado por Ile205, resíduo hidrofóbico não-carregado. O mecanismo de inibição canônico da benzamidina depende da formação de ponte salina entre o grupo amidínio (+1) e o Asp do S1 de tripsinas clássicas (Scheidig *et al.*, 1997). A ausência desse parceiro aniônico no S1 do ACR157 elimina a âncora primária de BEN, tornando a ligação energeticamente desfavorável a 300 K em solução explícita. Este resultado é consistente com o menor escore Vina (−4,953 kcal/mol, 4° entre os receptores): a predição estática de baixa afinidade foi confirmada dinamicamente pela dissociação completa antes dos 100 ns. Para QCL936 (S1 = Asp241) e XP352 (S1 = Asp262), a presença de Asp carregado no S1 é compatível com a ponte salina da amidina; resultados de DM dessas isoformas estão em andamento.
+
+<!-- PLACEHOLDER: adicionar QCL936-BEN, XP273-BEN, XP352-BEN quando disponíveis -->
 
 ---
 
