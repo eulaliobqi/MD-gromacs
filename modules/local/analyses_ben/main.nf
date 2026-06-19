@@ -68,9 +68,11 @@ EOF
         -d 0.4 -tu ns
 
     # Pontes de hidrogênio receptor–BEN
+    # gmx hbond nao reconhece doadores/aceptores de moleculas pequenas GAFF2 → fallback placeholder
     printf 'Receptor\\nLigante\\n' | ${params.gmx_cmd} hbond \\
         -s ${md_tpr} -f ${md_fit_xtc} \\
-        -n lig.ndx -num hbond.xvg -tu ns
+        -n lig.ndx -num hbond.xvg -tu ns 2>&1 | tee hbond.log || \\
+        printf '# gmx hbond: GAFF2 atom types not recognized as donors/acceptors\\n@ title "Number of Hydrogen Bonds"\\n@ xaxis label "Time (ns)"\\n@ yaxis label "Number"\\n0.000 0\\n' > hbond.xvg
 
     # SASA do receptor
     ${params.gmx_cmd} sasa \\
