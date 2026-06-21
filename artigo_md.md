@@ -243,7 +243,7 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | XP273-SKTI c2 | 100 ns | 0,288 ± 0,042 | 0,224 ± 0,017 | 596 ± 88 | 8,817 ± 3,496 | 101,31 ± 2,01 | ✅ estável |
 | **Série BEN (benzamidina)** | | | | | | | |
 | ACR157-BEN | 200 ns | 0,146 ± 0,019 | N.D.ª | 68,8 ± 72,4 | N.D.ᵇ | 2,74 ± 0,141 | ❌ dissociação ~95 ns |
-| QCL936-BEN | — | — | — | — | — | — | ⏳ pendente |
+| QCL936-BEN | 200 ns | 0,116 ± 0,018 | N.D.ª | 90,1 ± 41,6 | N.D.ᵇ | 2,78 ± 0,136 | ❌ dissociação ~150 ns |
 | XP273-BEN | — | — | — | — | — | — | ⏳ pendente |
 | XP352-BEN | — | — | — | — | — | — | ⏳ pendente |
 
@@ -264,8 +264,11 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | XP273-c2 | Tyr83 **0,098** ✅ | Asp132 **0,119** ✅ | Ser234 0,718 ❌ | Ile229 **0,118** ✅ | Tyr + Asp + S1 (3/4) |
 | **BEN** | | | | | |
 | ACR157-BEN | His69 ~3,5ᶜ ❌ | Asp114 ~3,5ᶜ ❌ | Ser211 ~3,0ᶜ ❌ | Ile205 ~3,5ᶜ ❌ | Dissociação (~95 ns) |
+| QCL936-BEN | His92 ~1,2ᵈ ❌ | Asp142 ~1,5ᵈ ❌ | Ser247 ~1,0ᵈ ❌ | Asp241 ~1,3ᵈ ❌ | Dissociação (~150 ns)ᵉ |
 
 ᶜ Médias sobre 200 ns incluindo fase dissociada (95–200 ns); fase pré-dissociação (0–95 ns): Ile205 ~0,35 nm ⚠️, demais >0,70 nm ❌.
+ᵈ Médias sobre 200 ns incluindo fase dissociada (150–200 ns); fase ligada (0–150 ns): His92 ~0,35 nm ✅, Ser247 ~0,30 nm ✅, Asp241 ~0,45 nm ⚠️, Asp142 ~0,85 nm ❌.
+ᵉ Modo parcial na fase ligada (0–150 ns): His + Ser + S1 borderline (eco de QCL936-SKTI).
 
 #### Padrão geral
 
@@ -331,7 +334,46 @@ O valor médio de contatos ao longo dos 200 ns foi de 68,8 ± 72,4 átomos — d
 
 A dissociação de BEN no ACR157 tem fundamento estrutural direto: o bolsão S1 desse receptor é ocupado por Ile205, resíduo hidrofóbico não-carregado. O mecanismo de inibição canônico da benzamidina depende da formação de ponte salina entre o grupo amidínio (+1) e o Asp do S1 de tripsinas clássicas (Scheidig *et al.*, 1997). A ausência desse parceiro aniônico no S1 do ACR157 elimina a âncora primária de BEN, tornando a ligação energeticamente desfavorável a 300 K em solução explícita. Este resultado é consistente com o menor escore Vina (−4,953 kcal/mol, 4° entre os receptores): a predição estática de baixa afinidade foi confirmada dinamicamente pela dissociação completa antes dos 100 ns. Para QCL936 (S1 = Asp241) e XP352 (S1 = Asp262), a presença de Asp carregado no S1 é compatível com a ponte salina da amidina; resultados de DM dessas isoformas estão em andamento.
 
-<!-- PLACEHOLDER: adicionar QCL936-BEN, XP273-BEN, XP352-BEN quando disponíveis -->
+---
+
+### 3.4.3 Dinâmica molecular de benzamidina — QCL936-BEN (200 ns)
+
+O complexo QCL936-BEN foi simulado por 200 ns com a mesma configuração dos demais sistemas da série BEN. Este receptor recebeu o melhor escore de docking Vina dentre os quatro receptores (−5,733 kcal/mol, 1°), atribuído à presença de Asp241 no bolsão S1 — o parceiro canônico da ponte salina amidínio↔Asp em tripsinas clássicas. A pose inicial correspondeu ao modo 1 do docking Vina.
+
+#### Estabilidade do receptor
+
+O RMSD do backbone do QCL936 estabilizou em 0,116 ± 0,018 nm — o valor mais baixo de todos os sistemas avaliados neste trabalho, incluindo as séries GORE4 e SKTI —, indicando que o receptor QCL936 apresenta a maior rigidez estrutural intrínseca entre as isoformas estudadas, independente do ligante.
+
+#### Fase de ligação estável (0–150 ns)
+
+Ao contrário do ACR157-BEN, no qual a fase de associação foi fraca (~80–100 contatos, Ile205 apenas borderline), o QCL936-BEN apresentou uma fase de ligação robusta nos primeiros 150 ns, com **110–120 contatos estáveis** e baixa variabilidade, indicando encaixe consistente no sítio de ligação. A análise das distâncias mínimas aos resíduos catalíticos durante esta fase revelou um padrão de ancoragem tri-residual:
+
+- **His92** (triad_1): ~0,35 nm ✅ — contato direto com a histidina catalítica
+- Asp142 (triad_2): ~0,85 nm ❌ — distante durante toda a fase ligada
+- **Ser247** (triad_3): ~0,25–0,35 nm ✅ — contato direto com a serina nucleofílica
+- **Asp241** (S1, triad_4): ~0,40–0,50 nm ⚠️ — borderline, coerente com a ponte salina amidínio⁺↔Asp²⁻
+
+Este padrão — His92 + Ser247 + Asp241/S1 bordeline, sem contato com Asp142 — replica estruturalmente o modo de inibição identificado para o QCL936-SKTI (His + Ser + S1, 3/4), sugerindo que a geometria do sítio ativo do QCL936 orienta os ligantes preferencialmente para esta trinca de resíduos, independente do tipo de ligante (proteína ou molécula pequena). O Asp241 no bolsão S1 atrai o amidínio (+1) por complementaridade eletrostática, enquanto o anel benzênico se posiciona na região entre His92 e Ser247.
+
+#### Evento de dissociação a ~150 ns
+
+A partir de ~150 ns, ocorreu dissociação progressiva e irreversível: os contatos declinaram de ~110 para zero ao longo de 25 ns (150–175 ns), e todas as distâncias catalíticas saltaram simultaneamente para 4–7 nm. A partir de ~180 ns, BEN permaneceu completamente livre no solvente até o final da trajetória (200 ns). O valor médio de contatos integrado sobre os 200 ns foi de 90,1 ± 41,6 átomos, com SD/média = 46%, padrão diagnóstico de distribuição bimodal por dissociação.
+
+#### Comparação com ACR157-BEN e implicações mecanísticas
+
+A comparação entre ACR157-BEN e QCL936-BEN revela o efeito direto da natureza do bolsão S1 sobre a estabilidade da benzamidina:
+
+| Parâmetro | ACR157-BEN | QCL936-BEN |
+|-----------|-----------|-----------|
+| S1 | Ile205 (neutro) | Asp241 (−) |
+| Score Vina | −4,953 kcal/mol | −5,733 kcal/mol |
+| Contatos (fase ligada) | ~80–100 (fraco) | ~110–120 (moderado) |
+| Dissociação | ~95 ns | ~150 ns |
+| Modo parcial (fase ligada) | nenhum | His + Ser + S1 borderline |
+
+O aumento de 58% no tempo de residência de QCL936-BEN em relação ao ACR157-BEN (150 vs 95 ns) é coerente com a maior complementaridade eletrostática proporcionada pelo Asp241, que permite a formação transitória da ponte salina canônica da benzamidina. Contudo, a dissociação antes dos 200 ns demonstra que essa interação é insuficiente para ancorar BEN de forma sustentada nas condições fisiológicas do intestino médio larval (pH 8,2, 300 K).
+
+<!-- PLACEHOLDER: adicionar XP273-BEN e XP352-BEN quando disponíveis -->
 
 ---
 
