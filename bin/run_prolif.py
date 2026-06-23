@@ -178,10 +178,13 @@ def run_prolif(
         if len(elems) == 0 or not any(elems):
             raise AttributeError("elements vazios")
     except AttributeError:
+        import warnings
         from MDAnalysis.topology import guessers
-        guessed = guessers.guess_types(u.atoms.names)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            guessed = guessers.guess_types(u.atoms.names)
         u.add_TopologyAttr('elements', guessed)
-        print(f"[prolif] 'elements' deduzidos de atom names (GRO não contém elementos)")
+        print("[prolif] 'elements' deduzidos de atom names (GRO não contém elementos)")
 
     ndx_groups = parse_ndx(ndx)
 
@@ -243,7 +246,7 @@ def run_prolif(
     print("[prolif] Fingerprint calculado")
 
     # DataFrame de resultados
-    df = fp.to_dataframe(return_atoms=False)
+    df = fp.to_dataframe()
     if df.empty:
         print("[prolif] AVISO: nenhuma interação detectada. "
               "Verificar se o ligante tem atributos de elemento corretos no .tpr.")
