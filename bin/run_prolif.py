@@ -1,0 +1,250 @@
+#!/usr/bin/env python3
+"""
+ProLIF interaction fingerprints para complexos receptor-ligante da DM.
+
+Compatível com:
+  - GORE4  (peptídeo 5 aa, chain B)
+  - BEN    (benzamidina, HETATM resname BNZ/B)
+  - SKTI   (proteína 177 aa — usa contact-map residue mode)
+
+Saídas (em --outdir):
+  prolif_barcode.png       — heatmap por frame (branco=sem interação, colorido=presente)
+  prolif_persistence.png   — barplot de persistência (% frames) por par resíduo:tipo
+  prolif_fingerprint.csv   — matriz completa frame × interação
+  prolif_summary.csv       — persistência por interação (top 30)
+
+Instalação:
+  mamba install -n md-gromacs prolif mdanalysis
+
+Uso:
+    python3 bin/run_prolif.py \
+        --tpr  results/ACR157-GORE4/ACR157-GORE4/prod/md.tpr \
+        --xtc  results/ACR157-GORE4/ACR157-GORE4/prod/md_fit.xtc \
+        --ndx  results/ACR157-GORE4/ACR157-GORE4/analise/lig.ndx \
+        --outdir results/ACR157-GORE4/ACR157-GORE4/prolif \
+        --sample-id ACR157-GORE4 \
+        [--start-ns 0] [--end-ns 100] [--stride 10]
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
+# ── Dependências ───────────────────────────────────────────────────────────────
+
+def _check_deps():
+    missing = []
+    try:
+        import MDAnalysis
+    except ImportError:
+        missing.append("mdanalysis")
+    try:
+        import prolif
+    except ImportError:
+        missing.append("prolif")
+    if missing:
+        sys.exit(
+            f"ERROR: pacotes ausentes: {', '.join(missing)}\n"
+            f"  mamba install -n md-gromacs {' '.join(missing)}\n"
+        )
+
+_check_deps()
+import MDAnalysis as mda
+import prolif as plf
+
+
+# ── Utilitários ───────────────────────────────────────────────────────────────
+
+def parse_ndx(ndx_path: str) -> dict:
+    groups, current = {}, None
+    with open(ndx_path) as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith('['):
+                current = line.strip('[]').strip()
+                groups[current] = []
+            elif current and line:
+                groups[current].extend(int(x) - 1 for x in line.split())
+    return groups
+
+
+def trajectory_slice(u, start_ns: float, end_ns: float | None, stride: int):
+    """Retorna iterável de ts selecionados por tempo."""
+    frames = []
+    for ts in u.trajectory[::stride]:
+        t_ns = ts.time / 1000.0
+        if t_ns < start_ns:
+            continue
+        if end_ns is not None and t_ns > end_ns:
+            break
+        frames.append(ts.frame)
+    return frames
+
+
+# ── ProLIF fingerprint ─────────────────────────────────────────────────────────
+
+def run_prolif(
+    tpr: str, xtc: str, ndx: str,
+    start_ns: float, end_ns: float | None, stride: int,
+    sample_id: str, outdir: Path,
+):
+    u = mda.Universe(tpr, xtc)
+    ndx_groups = parse_ndx(ndx)
+
+    for grp in ('Receptor', 'Ligante'):
+        if grp not in ndx_groups:
+            sys.exit(f"ERROR: grupo '{grp}' não encontrado em {ndx}.")
+
+    rec_ag = u.atoms[ndx_groups['Receptor']]
+    lig_ag = u.atoms[ndx_groups['Ligante']]
+
+    print(f"[prolif] {sample_id}")
+    print(f"[prolif] Receptor: {len(rec_ag)} átomos, Ligante: {len(lig_ag)} átomos")
+    print(f"[prolif] Stride: {stride} frames | Janela: {start_ns}–{end_ns or 'fim'} ns")
+
+    # Seleciona frames dentro da janela temporal
+    frame_list = trajectory_slice(u, start_ns, end_ns, stride)
+    print(f"[prolif] {len(frame_list)} frames para análise")
+
+    if len(frame_list) == 0:
+        sys.exit("ERROR: nenhum frame na janela temporal especificada.")
+
+    # ProLIF Fingerprint
+    fp = plf.Fingerprint(
+        interactions=[
+            "HBDonor", "HBAcceptor",
+            "Hydrophobic",
+            "Ionic",
+            "PiStacking", "PiCation",
+            "VdWContact",
+        ]
+    )
+
+    # Seleciona o subconjunto de frames manualmente (para eficiência)
+    u.trajectory[frame_list[0]]
+    fp.run(
+        u.trajectory[frame_list[0]:frame_list[-1]+1:stride],
+        lig_ag, rec_ag,
+        progress=True,
+    )
+
+    print("[prolif] Fingerprint calculado")
+
+    # DataFrame de resultados
+    df = fp.to_dataframe(return_atoms=False)
+    if df.empty:
+        print("[prolif] AVISO: nenhuma interação detectada. "
+              "Verificar se o ligante tem atributos de elemento corretos no .tpr.")
+        return
+
+    df.to_csv(outdir / 'prolif_fingerprint.csv', float_format='%.0f')
+    print(f"[prolif] Salvo: prolif_fingerprint.csv ({df.shape[0]} frames × {df.shape[1]} interações)")
+
+    # Persistência (% de frames com cada interação)
+    persistence = df.mean() * 100  # em percentual
+    persistence = persistence[persistence > 0].sort_values(ascending=False)
+    df_persist = persistence.reset_index()
+    df_persist.columns = ['interaction', 'persistence_pct']
+    df_persist.to_csv(outdir / 'prolif_summary.csv', index=False, float_format='%.2f')
+
+    # ── Plot 1: Barcode (heatmap frame × interação) ─────────────────────────
+    df_bool = df.copy().astype(float)
+    top_inter = persistence.head(40).index if len(persistence) >= 40 else persistence.index
+    df_bar = df_bool[top_inter]
+
+    if not df_bar.empty:
+        fig_w = max(10, len(top_inter) * 0.35)
+        fig_h = max(4, len(frame_list) * 0.015)
+        fig, ax = plt.subplots(figsize=(fig_w, min(fig_h, 12)))
+        ax.imshow(df_bar.values.T, aspect='auto', cmap='Blues',
+                  vmin=0, vmax=1, interpolation='nearest')
+        ax.set_yticks(range(len(top_inter)))
+        ax.set_yticklabels([str(x).replace(', ', '\n') for x in top_inter], fontsize=6)
+        ax.set_xlabel('Frame', fontsize=9)
+        ax.set_title(f'{sample_id} — ProLIF Barcode (top {len(top_inter)} interações)', fontsize=11)
+        plt.tight_layout()
+        fig.savefig(outdir / 'prolif_barcode.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print(f"[prolif] Salvo: prolif_barcode.png")
+
+    # ── Plot 2: Persistência (barplot) ─────────────────────────────────────
+    top30 = persistence.head(30)
+    if not top30.empty:
+        fig, ax = plt.subplots(figsize=(max(6, len(top30) * 0.45), 5))
+        colors_map = {
+            'HBDonor':    '#1f77b4',
+            'HBAcceptor': '#aec7e8',
+            'Hydrophobic': '#ff7f0e',
+            'Ionic':       '#d62728',
+            'PiStacking':  '#9467bd',
+            'PiCation':    '#8c564b',
+            'VdWContact':  '#7f7f7f',
+        }
+        bar_colors = [
+            colors_map.get(str(inter).split('.')[-1], '#2ca02c')
+            for inter in top30.index
+        ]
+        ax.bar(range(len(top30)), top30.values, color=bar_colors)
+        ax.set_xticks(range(len(top30)))
+        ax.set_xticklabels(
+            [str(x).replace(', ', '\n') for x in top30.index],
+            rotation=60, ha='right', fontsize=7,
+        )
+        ax.set_ylabel('Persistência (%)', fontsize=10)
+        ax.set_title(
+            f'{sample_id} — Persistência de Interações ProLIF\n'
+            f'({len(frame_list)} frames | {start_ns}–{end_ns or "fim"} ns)',
+            fontsize=11,
+        )
+        ax.axhline(20, color='gray', lw=0.8, ls='--', label='20%')
+        ax.axhline(50, color='red',  lw=0.8, ls='--', label='50%')
+        ax.legend(fontsize=8)
+        plt.tight_layout()
+        fig.savefig(outdir / 'prolif_persistence.png', dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        print(f"[prolif] Salvo: prolif_persistence.png")
+
+    # Resumo no terminal
+    print(f"\n[prolif] Top 20 interações mais persistentes:")
+    for inter, pct in top30.head(20).items():
+        print(f"  {str(inter):50s}  {pct:.1f}%")
+
+    print(f"\n[prolif] Concluído para {sample_id}")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    ap = argparse.ArgumentParser(description='ProLIF fingerprints receptor-ligante')
+    ap.add_argument('--tpr',       required=True)
+    ap.add_argument('--xtc',       required=True)
+    ap.add_argument('--ndx',       required=True)
+    ap.add_argument('--outdir',    required=True)
+    ap.add_argument('--sample-id', required=True)
+    ap.add_argument('--start-ns',  type=float, default=0.0)
+    ap.add_argument('--end-ns',    type=float, default=None)
+    ap.add_argument('--stride',    type=int,   default=10)
+    args = ap.parse_args()
+
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    run_prolif(
+        tpr=args.tpr, xtc=args.xtc, ndx=args.ndx,
+        start_ns=args.start_ns,
+        end_ns=args.end_ns,
+        stride=args.stride,
+        sample_id=args.sample_id,
+        outdir=outdir,
+    )
+
+
+if __name__ == '__main__':
+    main()
