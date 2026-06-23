@@ -76,14 +76,26 @@ def parse_ndx(ndx_path: str) -> dict:
 
 
 def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
-    """Extrai frame 0 como GRO quando TPR versão não suportada pelo MDAnalysis."""
+    """Extrai estrutura de referência do TPR como GRO."""
     import subprocess
+
+    def try_cmd(cmd: str) -> bool:
+        r = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        return r.returncode == 0 and Path(gro_out).exists()
+
     for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
-        cmd = f'echo "0" | {gmx} trjconv -s "{tpr}" -f "{xtc}" -dump 0 -o "{gro_out}" -nobackup 2>/dev/null'
-        ret = subprocess.run(cmd, shell=True)
-        if ret.returncode == 0 and Path(gro_out).exists():
-            print(f"[prolif] Topologia GRO gerada: {gro_out}")
+        if try_cmd(f'{gmx} editconf -f "{tpr}" -o "{gro_out}" -nobackup 2>&1'):
+            print(f"[prolif] Topologia GRO gerada via editconf: {gro_out}")
             return
+
+    for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
+        if try_cmd(
+            f'echo "System" | {gmx} trjconv '
+            f'-s "{tpr}" -f "{xtc}" -b 0 -e 0 -o "{gro_out}" -nobackup 2>&1'
+        ):
+            print(f"[prolif] Topologia GRO gerada via trjconv: {gro_out}")
+            return
+
     raise RuntimeError(f"Não foi possível gerar GRO de referência para {tpr}")
 
 

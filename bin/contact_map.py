@@ -70,18 +70,43 @@ def parse_ndx(ndx_path: str) -> dict:
 
 
 def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
-    """Extrai frame 0 como GRO usando gmx_mpi trjconv (fallback quando TPR muito novo)."""
+    """Extrai estrutura de referência do TPR como GRO (quando MDAnalysis não suporta a versão do TPR).
+
+    Tenta em ordem:
+      1. gmx editconf   — lê coordenadas de referência direto do TPR, sem precisar da trajetória
+      2. gmx trjconv    — extrai primeiro frame do XTC
+    """
     import subprocess
+
+    def try_cmd(cmd: str, label: str) -> bool:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        ok = result.returncode == 0 and Path(gro_out).exists()
+        if not ok:
+            stderr = (result.stderr or result.stdout or '').strip()
+            print(f"[contact_map]   {label} falhou: {stderr[-200:] if stderr else 'sem stderr'}")
+        return ok
+
     for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
-        cmd = f'echo "0" | {gmx} trjconv -s "{tpr}" -f "{xtc}" -dump 0 -o "{gro_out}" -nobackup 2>/dev/null'
-        ret = subprocess.run(cmd, shell=True)
-        if ret.returncode == 0 and Path(gro_out).exists():
-            print(f"[contact_map] Topologia GRO gerada: {gro_out}")
+        # Opção 1: editconf — lê posições de referência do TPR diretamente
+        cmd = f'{gmx} editconf -f "{tpr}" -o "{gro_out}" -nobackup 2>&1'
+        if try_cmd(cmd, f'{gmx} editconf'):
+            print(f"[contact_map] Topologia GRO gerada via editconf: {gro_out}")
             return
+
+    for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
+        # Opção 2: trjconv — extrai primeiro frame do XTC
+        cmd = (
+            f'echo "System" | {gmx} trjconv '
+            f'-s "{tpr}" -f "{xtc}" -b 0 -e 0 '
+            f'-o "{gro_out}" -nobackup 2>&1'
+        )
+        if try_cmd(cmd, f'{gmx} trjconv'):
+            print(f"[contact_map] Topologia GRO gerada via trjconv: {gro_out}")
+            return
+
     raise RuntimeError(
-        "Não foi possível gerar GRO de referência.\n"
-        "Tente manualmente: echo '0' | mpirun -np 1 gmx_mpi trjconv "
-        f"-s {tpr} -f {xtc} -dump 0 -o frame0_ref.gro"
+        "Não foi possível gerar GRO de referência. Execute manualmente:\n"
+        f"  mpirun -np 1 gmx_mpi editconf -f {tpr} -o {gro_out}"
     )
 
 
