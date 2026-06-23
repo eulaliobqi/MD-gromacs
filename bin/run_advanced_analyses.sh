@@ -21,15 +21,33 @@ ONLY=""
 DRY_RUN=0
 STRIDE=10
 CUTOFF=0.4
+RESULTS_BASE=""   # vazio = auto-detectar
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --only)    ONLY="$2";   shift 2 ;;
-        --dry-run) DRY_RUN=1;   shift   ;;
-        --stride)  STRIDE="$2"; shift 2 ;;
+        --only)          ONLY="$2";         shift 2 ;;
+        --dry-run)       DRY_RUN=1;         shift   ;;
+        --stride)        STRIDE="$2";       shift 2 ;;
+        --results-base)  RESULTS_BASE="$2"; shift 2 ;;
         *) echo "Argumento desconhecido: $1"; exit 1 ;;
     esac
 done
+
+# Auto-detecta o diretório base de resultados
+if [[ -z "$RESULTS_BASE" ]]; then
+    for candidate in results results-MD work/results; do
+        if [[ -d "$candidate" ]]; then
+            RESULTS_BASE="$candidate"
+            break
+        fi
+    done
+    if [[ -z "$RESULTS_BASE" ]]; then
+        echo "ERRO: nenhum diretório de resultados encontrado (results/, results-MD/)."
+        echo "Use: bash bin/run_advanced_analyses.sh --results-base <caminho>"
+        exit 1
+    fi
+fi
+echo "Diretório de resultados: ${RESULTS_BASE}/"
 
 PROLIF_OK=0
 python3 -c "import prolif" 2>/dev/null && PROLIF_OK=1
@@ -103,7 +121,7 @@ should_run() { [[ -z "$ONLY" || "$ONLY" == "$1" ]]; }
 # ════════════════════════════════════════════════════════════════════════════
 echo "── SÉRIE GORE4 ─────────────────────────────────────────────────────────"
 for sid in "QCL936-GORE4" "ACR157-GORE4" "XP273-GORE4"; do
-    rdir="results/${sid}"
+    rdir="${RESULTS_BASE}/${sid}"
     [[ -d "$rdir" ]] || { echo "  [SKIP] $rdir não encontrado"; continue; }
     should_run contact_map && do_contact_map "$rdir" "$sid" 0 ""
     should_run prolif       && do_prolif      "$rdir" "$sid" 0 ""
@@ -116,7 +134,7 @@ done
 echo ""
 echo "── SÉRIE SKTI ─────────────────────────────────────────────────────────"
 for sid in "ACR157-SKTI" "QCL936-SKTI" "XP273-SKTI"; do
-    rdir="results/${sid}"
+    rdir="${RESULTS_BASE}/${sid}"
     [[ -d "$rdir" ]] || { echo "  [SKIP] $rdir não encontrado"; continue; }
     should_run contact_map && do_contact_map "$rdir" "$sid" 0 ""
     should_run prolif       && do_prolif      "$rdir" "$sid" 0 ""
@@ -130,7 +148,6 @@ done
 # ════════════════════════════════════════════════════════════════════════════
 echo ""
 echo "── SÉRIE BEN (fase ligada) ─────────────────────────────────────────────"
-# Formato: "sample_id dissoc_ns"
 declare -A BEN_DISSOC=(
     ["XP273-BEN"]=80
     ["ACR157-BEN"]=95
@@ -139,7 +156,7 @@ declare -A BEN_DISSOC=(
 )
 
 for sid in "XP273-BEN" "ACR157-BEN" "XP352-BEN" "QCL936-BEN"; do
-    rdir="results/${sid}"
+    rdir="${RESULTS_BASE}/${sid}"
     [[ -d "$rdir" ]] || { echo "  [SKIP] $rdir não encontrado"; continue; }
     dissoc="${BEN_DISSOC[$sid]}"
     should_run contact_map && do_contact_map "$rdir" "$sid" 0 "$dissoc"
@@ -156,7 +173,7 @@ printf "  %-22s  %-12s  %-8s  %-8s\n" "-------" "-----------" "------" "------"
 for sid in "QCL936-GORE4" "ACR157-GORE4" "XP273-GORE4" \
            "ACR157-SKTI" "QCL936-SKTI" "XP273-SKTI" \
            "XP273-BEN" "ACR157-BEN" "XP352-BEN" "QCL936-BEN"; do
-    rdir="results/${sid}"
+    rdir="${RESULTS_BASE}/${sid}"
     [[ -d "$rdir" ]] || continue
     cm="$rdir/$sid/contact_map/contact_map.png"
     pr="$rdir/$sid/prolif/prolif_persistence.png"
