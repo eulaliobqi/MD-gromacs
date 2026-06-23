@@ -252,14 +252,24 @@ def run_prolif(
               "Verificar se o ligante tem atributos de elemento corretos no .tpr.")
         return
 
+    # ProLIF 2.x usa MultiIndex nas colunas (lig_res, prot_res, interaction_type).
+    # Achata para strings "ProtRes-LigRes-Tipo" antes de qualquer operação.
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [
+            '-'.join(str(lvl) for lvl in col if str(lvl) != 'nan').strip('-')
+            for col in df.columns
+        ]
+
     df.to_csv(outdir / 'prolif_fingerprint.csv', float_format='%.0f')
     print(f"[prolif] Salvo: prolif_fingerprint.csv ({df.shape[0]} frames × {df.shape[1]} interações)")
 
     # Persistência (% de frames com cada interação)
-    persistence = df.mean() * 100  # em percentual
+    persistence = df.mean() * 100
     persistence = persistence[persistence > 0].sort_values(ascending=False)
-    df_persist = persistence.reset_index()
-    df_persist.columns = ['interaction', 'persistence_pct']
+    df_persist = pd.DataFrame({
+        'interaction': persistence.index,
+        'persistence_pct': persistence.values,
+    })
     df_persist.to_csv(outdir / 'prolif_summary.csv', index=False, float_format='%.2f')
 
     # ── Plot 1: Barcode (heatmap frame × interação) ─────────────────────────
