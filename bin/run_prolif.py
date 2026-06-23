@@ -170,6 +170,19 @@ def run_prolif(
     sample_id: str, outdir: Path,
 ):
     u = load_universe(tpr, xtc)
+
+    # ProLIF usa RDKitConverter que exige atributo 'elements'.
+    # GRO não contém elementos — deduz a partir dos nomes dos átomos.
+    try:
+        elems = u.atoms.elements
+        if len(elems) == 0 or not any(elems):
+            raise AttributeError("elements vazios")
+    except AttributeError:
+        from MDAnalysis.topology import guessers
+        guessed = guessers.guess_types(u.atoms.names)
+        u.add_TopologyAttr('elements', guessed)
+        print(f"[prolif] 'elements' deduzidos de atom names (GRO não contém elementos)")
+
     ndx_groups = parse_ndx(ndx)
 
     for grp in ('Receptor', 'Ligante'):
