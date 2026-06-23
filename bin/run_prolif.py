@@ -75,8 +75,23 @@ def parse_ndx(ndx_path: str) -> dict:
     return groups
 
 
+def _find_existing_topology(tpr: str) -> str | None:
+    """Busca GRO/PDB existente no diretório do TPR (frame0_ref.gro, *.gro, *.pdb)."""
+    d = Path(tpr).parent
+    candidates = (
+        [d / 'frame0_ref.gro'] +
+        sorted(d.glob('*.gro')) +
+        [d.parent / 'complexo' / 'complexo.pdb'] +
+        sorted(d.glob('*.pdb'))
+    )
+    for c in candidates:
+        if c.exists() and c.stat().st_size > 1000:
+            return str(c)
+    return None
+
+
 def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
-    """Extrai estrutura de referência do TPR como GRO."""
+    """Tenta gerar GRO de referência via subprocess (gmx editconf/trjconv)."""
     import subprocess
 
     def try_cmd(cmd: str) -> bool:
@@ -100,20 +115,38 @@ def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
 
 
 def load_universe(tpr: str, xtc: str) -> mda.Universe:
-    """Carrega Universe. Fallback para GRO se TPR versão não suportada."""
+    """Carrega Universe. Se TPR v138 não suportado: busca GRO/PDB existente, depois tenta gerar."""
     try:
         return mda.Universe(tpr, xtc)
     except (ValueError, NotImplementedError) as e:
         err = str(e)
         if 'tpx version' not in err.lower() and 'not support' not in err.lower():
             raise
-        print(f"[prolif] AVISO: {err}")
-        print("[prolif] Gerando topologia GRO via gmx_mpi trjconv...")
+
+        print(f"[prolif] TPR versão não suportada: {err}")
+
+        # 1. Busca topologia alternativa já existente (md.gro, *.gro, etc.)
+        alt = _find_existing_topology(tpr)
+        if alt:
+            print(f"[prolif] Usando topologia alternativa: {alt}")
+            try:
+                return mda.Universe(alt, xtc)
+            except Exception as e2:
+                print(f"[prolif]   falhou com {alt}: {e2}")
+
+        # 2. Tenta gerar GRO via editconf/trjconv
         gro_ref = str(Path(tpr).parent / 'frame0_ref.gro')
-        if not Path(gro_ref).exists():
+        try:
             _generate_gro_ref(tpr, xtc, gro_ref)
-        print(f"[prolif] Carregando com GRO: {gro_ref}")
-        return mda.Universe(gro_ref, xtc)
+            return mda.Universe(gro_ref, xtc)
+        except RuntimeError:
+            pass
+
+        raise RuntimeError(
+            f"MDAnalysis não suporta TPR v138. Corrija com:\n"
+            f"  mamba update -n md-gromacs mdanalysis   # ou:\n"
+            f"  mpirun -np 1 gmx_mpi editconf -f {tpr} -o {Path(tpr).parent}/frame0_ref.gro"
+        )
 
 
 def trajectory_slice(u, start_ns: float, end_ns: float | None, stride: int):
@@ -218,8 +251,9 @@ def run_prolif(
     df_bar = df_bool[top_inter]
 
     if not df_bar.empty:
+        n_frames = len(df)
         fig_w = max(10, len(top_inter) * 0.35)
-        fig_h = max(4, len(frame_list) * 0.015)
+        fig_h = max(4, n_frames * 0.015)
         fig, ax = plt.subplots(figsize=(fig_w, min(fig_h, 12)))
         ax.imshow(df_bar.values.T, aspect='auto', cmap='Blues',
                   vmin=0, vmax=1, interpolation='nearest')
@@ -258,7 +292,7 @@ def run_prolif(
         ax.set_ylabel('Persistência (%)', fontsize=10)
         ax.set_title(
             f'{sample_id} — Persistência de Interações ProLIF\n'
-            f'({len(frame_list)} frames | {start_ns}–{end_ns or "fim"} ns)',
+            f'({len(df)} frames | {start_ns}–{end_ns or "fim"} ns)',
             fontsize=11,
         )
         ax.axhline(20, color='gray', lw=0.8, ls='--', label='20%')
