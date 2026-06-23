@@ -50,6 +50,35 @@ ben_dissoc() {
 
 is_ben() { [[ "${1^^}" == *BEN* ]]; }
 
+# ── Pré-geração de GRO (TPR v138 não suportado pelo MDAnalysis) ──────────
+# gmx_mpi editconf funciona no contexto bash mas falha quando chamado via
+# subprocess Python (MPI aninhado). Por isso pré-geramos aqui.
+pregen_gro_files() {
+    echo "Pré-gerando topologias GRO para TPR v138 (se necessário)..."
+    local count=0
+    while IFS= read -r tpr_path; do
+        local gro_path
+        gro_path="$(dirname "$tpr_path")/frame0_ref.gro"
+        [[ -f "$gro_path" ]] && continue
+
+        echo "  editconf: $tpr_path"
+        if mpirun -np 1 gmx_mpi editconf \
+                -f "$tpr_path" -o "$gro_path" -nobackup > /dev/null 2>&1; then
+            echo "    → OK: $gro_path"
+            (( count++ )) || true
+        else
+            # Tenta sem mpirun (útil se gmx_mpi for serial)
+            gmx_mpi editconf \
+                -f "$tpr_path" -o "$gro_path" -nobackup > /dev/null 2>&1 && {
+                echo "    → OK (direto gmx_mpi): $gro_path"
+                (( count++ )) || true
+            } || echo "    → FALHOU (será tentado via Python se necessário)"
+        fi
+    done < <(find . -name "md.tpr" -path "*/prod/md.tpr" 2>/dev/null)
+    echo "GRO pré-gerados: ${count} arquivo(s)"
+    echo ""
+}
+
 # ── Funções de análise ─────────────────────────────────────────────────────
 do_contact_map() {
     local rdir="$1" sid="$2" start_ns="$3" end_ns="$4"
@@ -117,6 +146,9 @@ fi
 
 echo "Encontrados: ${#TPR_LIST[@]} complexos"
 echo ""
+
+# Pré-gera GRO no contexto bash (mpirun não funciona em subprocess Python)
+[[ "$DRY_RUN" -eq 0 ]] && pregen_gro_files
 
 # ── Processa cada complexo descoberto ─────────────────────────────────────
 declare -A SEEN_SIDS   # evita duplicatas se find retornar múltiplos tpr
