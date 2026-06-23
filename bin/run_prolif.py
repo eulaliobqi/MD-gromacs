@@ -218,13 +218,14 @@ def run_prolif(
         fp = plf.Fingerprint()
         print("[prolif] Usando set de interações default do ProLIF")
 
-    fp.run(
-        u.trajectory, lig_ag, rec_ag,
-        start=start_frame,
-        stop=end_frame,
-        step=stride,
-        progress=True,
-    )
+    # ProLIF 2.x+ não aceita start/stop/step como kwargs — fatia a trajetória antes
+    traj_slice = u.trajectory[start_frame:end_frame:stride]
+    try:
+        fp.run(traj_slice, lig_ag, rec_ag, progress=True)
+    except TypeError:
+        # Fallback para ProLIF 1.x (AnalysisBase interface)
+        fp.run(u.trajectory, lig_ag, rec_ag,
+               start=start_frame, stop=end_frame, step=stride, verbose=True)
 
     print("[prolif] Fingerprint calculado")
 
