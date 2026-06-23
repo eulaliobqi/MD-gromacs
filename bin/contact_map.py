@@ -110,22 +110,72 @@ def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
     )
 
 
+def _find_existing_topology(tpr: str) -> str | None:
+    """Busca arquivo de topologia alternativo (GRO/PDB) no mesmo diretório do TPR.
+
+    Candidatos buscados (por prioridade):
+      frame0_ref.gro  — pré-gerado pelo orchestrador
+      *.gro           — qualquer GRO (de etapas da simulação)
+      complexo.pdb    — PDB do complexo preparado
+      *.pdb           — qualquer PDB local
+    """
+    d = Path(tpr).parent
+    candidates = (
+        [d / 'frame0_ref.gro'] +
+        sorted(d.glob('*.gro')) +
+        [d.parent / 'complexo' / 'complexo.pdb'] +
+        sorted(d.glob('*.pdb'))
+    )
+    for c in candidates:
+        if c.exists() and c.stat().st_size > 1000:  # ignora arquivos vazios
+            return str(c)
+    return None
+
+
 def load_universe(tpr: str, xtc: str) -> mda.Universe:
-    """Carrega Universe do MDAnalysis. Se TPR versão não suportada, gera GRO como fallback."""
+    """Carrega Universe do MDAnalysis.
+
+    Se o TPR for de versão não suportada (ex: v138 do GROMACS 2024):
+      1. Busca GRO/PDB existente no mesmo diretório
+      2. Tenta gerar via gmx editconf/trjconv
+      3. Se tudo falhar, instrui como corrigir
+    """
     try:
         return mda.Universe(tpr, xtc)
     except (ValueError, NotImplementedError) as e:
         err = str(e)
         if 'tpx version' not in err.lower() and 'not support' not in err.lower():
             raise
-        # TPR muito novo para esta versão do MDAnalysis — usa GRO como topologia
-        print(f"[contact_map] AVISO: {err}")
-        print("[contact_map] Gerando topologia GRO alternativa via gmx_mpi trjconv...")
+
+        print(f"[contact_map] TPR versão não suportada pelo MDAnalysis: {err}")
+
+        # 1. Busca topologia alternativa já existente
+        alt = _find_existing_topology(tpr)
+        if alt:
+            print(f"[contact_map] Usando topologia alternativa: {alt}")
+            try:
+                return mda.Universe(alt, xtc)
+            except Exception as e2:
+                print(f"[contact_map]   falhou com {alt}: {e2}")
+
+        # 2. Tenta gerar GRO via editconf
         gro_ref = str(Path(tpr).parent / 'frame0_ref.gro')
-        if not Path(gro_ref).exists():
+        print(f"[contact_map] Tentando gerar: {gro_ref}")
+        try:
             _generate_gro_ref(tpr, xtc, gro_ref)
-        print(f"[contact_map] Carregando com GRO: {gro_ref}")
-        return mda.Universe(gro_ref, xtc)
+            return mda.Universe(gro_ref, xtc)
+        except RuntimeError as e3:
+            pass
+
+        # 3. Instrui o usuário
+        raise RuntimeError(
+            f"MDAnalysis não suporta TPR v138. Corrija com:\n"
+            f"  mamba update -n md-gromacs mdanalysis   # recomendado\n"
+            f"  # OU manualmente:\n"
+            f"  mpirun -np 1 gmx_mpi editconf -f {tpr} -o {Path(tpr).parent}/frame0_ref.gro\n"
+            f"  # OU atualize via pip:\n"
+            f"  pip install --upgrade MDAnalysis"
+        )
 
 
 # ── Mapa de contato vetorizado ────────────────────────────────────────────────
