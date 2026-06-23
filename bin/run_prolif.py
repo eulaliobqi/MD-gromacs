@@ -109,29 +109,46 @@ def run_prolif(
     print(f"[prolif] Receptor: {len(rec_ag)} átomos, Ligante: {len(lig_ag)} átomos")
     print(f"[prolif] Stride: {stride} frames | Janela: {start_ns}–{end_ns or 'fim'} ns")
 
-    # Seleciona frames dentro da janela temporal
-    frame_list = trajectory_slice(u, start_ns, end_ns, stride)
-    print(f"[prolif] {len(frame_list)} frames para análise")
+    # Converte ns → frame index (10 frames/ns = 100 ps/frame padrão do pipeline)
+    frames_per_ns = 10
+    start_frame = max(0, int(start_ns * frames_per_ns))
+    end_frame   = int(end_ns * frames_per_ns) if end_ns is not None else None
+    n_frames_est = (((end_frame or len(u.trajectory)) - start_frame) // stride) + 1
+    print(f"[prolif] ~{n_frames_est} frames para análise (frames {start_frame}→{end_frame or 'fim'})")
 
-    if len(frame_list) == 0:
+    if n_frames_est <= 0:
         sys.exit("ERROR: nenhum frame na janela temporal especificada.")
 
-    # ProLIF Fingerprint
-    fp = plf.Fingerprint(
-        interactions=[
-            "HBDonor", "HBAcceptor",
-            "Hydrophobic",
-            "Ionic",
-            "PiStacking", "PiCation",
-            "VdWContact",
-        ]
-    )
+    # ProLIF Fingerprint — usa interações disponíveis na versão instalada
+    # Detecta dinamicamente para evitar NameError em versões diferentes
+    PREFERRED = [
+        "HBDonor", "HBAcceptor",
+        "Hydrophobic",
+        "Cationic", "Anionic",      # ProLIF 2.x (renomeados de "Ionic")
+        "Ionic",                     # ProLIF 1.x
+        "PiStacking", "CationPi", "PiCation",
+        "VdWContact",
+    ]
+    try:
+        # Testa cada interação individualmente para filtrar as não disponíveis
+        avail = []
+        for name in PREFERRED:
+            try:
+                plf.Fingerprint(interactions=[name])
+                avail.append(name)
+            except NameError:
+                pass
+        fp = plf.Fingerprint(interactions=avail) if avail else plf.Fingerprint()
+        print(f"[prolif] Interações ativas: {avail or 'default'}")
+    except Exception:
+        fp = plf.Fingerprint()
+        print("[prolif] Usando set de interações default do ProLIF")
 
-    # Seleciona o subconjunto de frames manualmente (para eficiência)
-    u.trajectory[frame_list[0]]
     fp.run(
-        u.trajectory[frame_list[0]:frame_list[-1]+1:stride],
-        lig_ag, rec_ag,
+        u.trajectory, lig_ag, rec_ag,
+        start=start_frame,
+        stop=end_frame,
+        step=stride,
         progress=True,
     )
 
