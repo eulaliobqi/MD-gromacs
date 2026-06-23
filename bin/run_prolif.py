@@ -75,6 +75,35 @@ def parse_ndx(ndx_path: str) -> dict:
     return groups
 
 
+def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
+    """Extrai frame 0 como GRO quando TPR versão não suportada pelo MDAnalysis."""
+    import subprocess
+    for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
+        cmd = f'echo "0" | {gmx} trjconv -s "{tpr}" -f "{xtc}" -dump 0 -o "{gro_out}" -nobackup 2>/dev/null'
+        ret = subprocess.run(cmd, shell=True)
+        if ret.returncode == 0 and Path(gro_out).exists():
+            print(f"[prolif] Topologia GRO gerada: {gro_out}")
+            return
+    raise RuntimeError(f"Não foi possível gerar GRO de referência para {tpr}")
+
+
+def load_universe(tpr: str, xtc: str) -> mda.Universe:
+    """Carrega Universe. Fallback para GRO se TPR versão não suportada."""
+    try:
+        return mda.Universe(tpr, xtc)
+    except (ValueError, NotImplementedError) as e:
+        err = str(e)
+        if 'tpx version' not in err.lower() and 'not support' not in err.lower():
+            raise
+        print(f"[prolif] AVISO: {err}")
+        print("[prolif] Gerando topologia GRO via gmx_mpi trjconv...")
+        gro_ref = str(Path(tpr).parent / 'frame0_ref.gro')
+        if not Path(gro_ref).exists():
+            _generate_gro_ref(tpr, xtc, gro_ref)
+        print(f"[prolif] Carregando com GRO: {gro_ref}")
+        return mda.Universe(gro_ref, xtc)
+
+
 def trajectory_slice(u, start_ns: float, end_ns: float | None, stride: int):
     """Retorna iterável de ts selecionados por tempo."""
     frames = []
@@ -95,7 +124,7 @@ def run_prolif(
     start_ns: float, end_ns: float | None, stride: int,
     sample_id: str, outdir: Path,
 ):
-    u = mda.Universe(tpr, xtc)
+    u = load_universe(tpr, xtc)
     ndx_groups = parse_ndx(ndx)
 
     for grp in ('Receptor', 'Ligante'):

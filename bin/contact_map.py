@@ -69,6 +69,40 @@ def parse_ndx(ndx_path: str) -> dict:
     return groups
 
 
+def _generate_gro_ref(tpr: str, xtc: str, gro_out: str):
+    """Extrai frame 0 como GRO usando gmx_mpi trjconv (fallback quando TPR muito novo)."""
+    import subprocess
+    for gmx in ('mpirun -np 1 gmx_mpi', 'gmx_mpi', 'gmx'):
+        cmd = f'echo "0" | {gmx} trjconv -s "{tpr}" -f "{xtc}" -dump 0 -o "{gro_out}" -nobackup 2>/dev/null'
+        ret = subprocess.run(cmd, shell=True)
+        if ret.returncode == 0 and Path(gro_out).exists():
+            print(f"[contact_map] Topologia GRO gerada: {gro_out}")
+            return
+    raise RuntimeError(
+        "Não foi possível gerar GRO de referência.\n"
+        "Tente manualmente: echo '0' | mpirun -np 1 gmx_mpi trjconv "
+        f"-s {tpr} -f {xtc} -dump 0 -o frame0_ref.gro"
+    )
+
+
+def load_universe(tpr: str, xtc: str) -> mda.Universe:
+    """Carrega Universe do MDAnalysis. Se TPR versão não suportada, gera GRO como fallback."""
+    try:
+        return mda.Universe(tpr, xtc)
+    except (ValueError, NotImplementedError) as e:
+        err = str(e)
+        if 'tpx version' not in err.lower() and 'not support' not in err.lower():
+            raise
+        # TPR muito novo para esta versão do MDAnalysis — usa GRO como topologia
+        print(f"[contact_map] AVISO: {err}")
+        print("[contact_map] Gerando topologia GRO alternativa via gmx_mpi trjconv...")
+        gro_ref = str(Path(tpr).parent / 'frame0_ref.gro')
+        if not Path(gro_ref).exists():
+            _generate_gro_ref(tpr, xtc, gro_ref)
+        print(f"[contact_map] Carregando com GRO: {gro_ref}")
+        return mda.Universe(gro_ref, xtc)
+
+
 # ── Mapa de contato vetorizado ────────────────────────────────────────────────
 
 def compute_contact_map(
@@ -87,7 +121,7 @@ def compute_contact_map(
     """
     cutoff_ang = cutoff_nm * 10.0  # MDAnalysis usa Ångströms
 
-    u = mda.Universe(tpr, xtc)
+    u = load_universe(tpr, xtc)
     ndx_groups = parse_ndx(ndx)
 
     for grp in ('Receptor', 'Ligante'):
