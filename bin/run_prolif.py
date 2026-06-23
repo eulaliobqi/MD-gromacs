@@ -236,12 +236,37 @@ def run_prolif(
 
     # ProLIF 2.x+ não aceita start/stop/step como kwargs — fatia a trajetória antes
     traj_slice = u.trajectory[start_frame:end_frame:stride]
+
+    def _run_fp(force_h=False):
+        """Executa fp.run(); se force_h, bypassa checagem de H via monkey-patch."""
+        if force_h:
+            # Ligante sem H explícito (ex: lig.ndx só com átomos pesados).
+            # plf.Molecule.from_mda(ag, force=True) pula a checagem mas mantém
+            # a conversão — HBDonor/HBAcceptor não serão detectados.
+            _orig = plf.Molecule.from_mda
+            plf.Molecule.from_mda = lambda ag, **kw: _orig(ag, force=True, **kw)
+            try:
+                fp.run(traj_slice, lig_ag, rec_ag, progress=True)
+            finally:
+                plf.Molecule.from_mda = _orig
+        else:
+            fp.run(traj_slice, lig_ag, rec_ag, progress=True)
+
     try:
-        fp.run(traj_slice, lig_ag, rec_ag, progress=True)
+        _run_fp(force_h=False)
     except TypeError:
-        # Fallback para ProLIF 1.x (AnalysisBase interface)
+        # ProLIF 1.x fallback
         fp.run(u.trajectory, lig_ag, rec_ag,
                start=start_frame, stop=end_frame, step=stride, verbose=True)
+    except AttributeError as e:
+        if "hydrogen" not in str(e).lower():
+            raise
+        print(f"[prolif] Ligante sem H — aplicando force=True (BEN/molécula pequena)")
+        try:
+            _run_fp(force_h=True)
+        except Exception as e2:
+            print(f"[prolif] AVISO: ProLIF não pôde processar {sample_id}: {e2}")
+            return
 
     print("[prolif] Fingerprint calculado")
 
