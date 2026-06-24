@@ -151,7 +151,6 @@ startframe=${START_FRAME},
 endframe=${END_FRAME},
 interval=1,
 verbose=2,
-keepfiles=2,
 /
 &gb
 igb=5,
