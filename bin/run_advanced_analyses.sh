@@ -44,6 +44,9 @@ ben_dissoc() {
         *ACR157*BEN*|*BEN*ACR157*) echo 95  ;;
         *XP352*BEN*|*BEN*XP352*) echo 125 ;;
         *QCL936*BEN*|*BEN*QCL936*) echo 150 ;;
+        *BEN*)
+            echo "[WARN] BEN não reconhecido: $1 — usando 100 ns como fallback" >&2
+            echo 100 ;;
         *) echo ""  ;;   # não-BEN: sem limite
     esac
 }

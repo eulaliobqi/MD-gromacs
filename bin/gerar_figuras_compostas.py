@@ -58,8 +58,9 @@ def _discover(filename):
         else:
             sid_dir = parent
         sid = sid_dir.name.lower().replace("-", "").replace("_", "")
-        if sid not in result:
-            result[sid] = p
+        if sid in result:
+            print(f"[WARN] SID duplicado após normalização: '{sid}' — {p.relative_to(ROOT)} sobrescreve {result[sid].relative_to(ROOT)}")
+        result[sid] = p
     return result
 
 

@@ -195,6 +195,15 @@ def run_prolif(
     rec_ag = u.atoms[ndx_groups['Receptor']]
     lig_ag = u.atoms[ndx_groups['Ligante']]
 
+    # Verifica presença de H explícito no ligante (necessário para HBDonor/HBAcceptor)
+    try:
+        n_H = sum(1 for a in lig_ag.atoms
+                  if a.name.startswith('H') or getattr(a, 'element', '') == 'H')
+        if n_H == 0:
+            print("[prolif] WARN: ligante sem H explícito — HBDonor/HBAcceptor serão omitidos")
+    except Exception:
+        n_H = -1  # não foi possível checar
+
     print(f"[prolif] {sample_id}")
     print(f"[prolif] Receptor: {len(rec_ag)} átomos, Ligante: {len(lig_ag)} átomos")
     print(f"[prolif] Stride: {stride} frames | Janela: {start_ns}–{end_ns or 'fim'} ns")
@@ -222,14 +231,17 @@ def run_prolif(
     try:
         # Testa cada interação individualmente para filtrar as não disponíveis
         avail = []
+        rejected = []
         for name in PREFERRED:
             try:
                 plf.Fingerprint(interactions=[name])
                 avail.append(name)
-            except NameError:
-                pass
+            except (NameError, ValueError):
+                rejected.append(name)
+        if rejected:
+            print(f"[prolif] WARN: interações indisponíveis nesta versão ProLIF: {rejected}")
         fp = plf.Fingerprint(interactions=avail) if avail else plf.Fingerprint()
-        print(f"[prolif] Interações ativas: {avail or 'default'}")
+        print(f"[prolif] Interações ativas: {avail or 'default (ProLIF fallback)'}")
     except Exception:
         fp = plf.Fingerprint()
         print("[prolif] Usando set de interações default do ProLIF")

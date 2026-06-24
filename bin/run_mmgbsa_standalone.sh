@@ -219,6 +219,18 @@ for i, a in enumerate(args):
         modified = content
         fixes    = 0
 
+        # ── Fix 0: LIG proteico (SKTI, 177 aa) — garantir ff14SB carregado ────
+        # gmx_MMPBSA 1.6.x gera leap.in com ff19SB apenas para o receptor.
+        # Quando LIG é uma proteína Kunitz (>50 resíduos), também precisa de ff14SB
+        # para parâmetros de ligação. Sem ele, tleap usa parâmetros incompletos.
+        if lig_max > 0 and (lig_max - lig_min) > 50:
+            if ('leaprc.protein.ff14SB' not in modified and
+                    'leaprc.protein.ff19SB' not in modified):
+                modified = 'source leaprc.protein.ff14SB\n' + modified
+                fixes += 1
+                wlog("[tleap-wrapper] FIX-FF14SB: adicionado leaprc.protein.ff14SB para LIG proteico "
+                     f"({lig_max - lig_min + 1} resíduos)")
+
         # ── Fix 3: GAFF → GAFF2 (atom types EN3, n3, etc.) ─────────────────
         # leaprc.gaff usa GAFF1; ACPYPE/GAFF2 gera atom types incompatíveis.
         if 'leaprc.gaff\n' in modified or 'leaprc.gaff"' in modified or "source leaprc.gaff\n" in modified:

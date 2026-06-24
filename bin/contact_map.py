@@ -290,8 +290,10 @@ def plot_contact_map(
     mask_lig = freq_matrix.max(axis=0) >= min_freq
 
     if mask_rec.sum() == 0:
+        print(f"[contact_map] WARN: nenhum resíduo receptor com freq ≥ {min_freq:.2f} — exibindo todos")
         mask_rec[:] = True
     if mask_lig.sum() == 0:
+        print(f"[contact_map] WARN: nenhum resíduo ligante com freq ≥ {min_freq:.2f} — exibindo todos")
         mask_lig[:] = True
 
     df_full = pd.DataFrame(freq_matrix, index=rec_labels, columns=lig_labels)
