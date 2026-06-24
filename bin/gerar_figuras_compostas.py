@@ -40,33 +40,68 @@ ROOT = Path(__file__).parent.parent
 
 # ── Auto-descoberta de arquivos ────────────────────────────────────────────
 
+_SKIP_DIRS = {"figures", "local_viz", "bin", "__pycache__", "work"}
+
 def _discover(filename):
     """
-    Retorna dict {sid_normalizado: Path} para todos os `filename` encontrados
-    nas árvores de simulação. Busca em:
-      - <ROOT>/**/<analise ou vazio>/<filename>
-    sid_normalizado = basename do diretório de simulação em lowercase sem hífens/underscore.
+    Retorna dict {sid_normalizado: Path} para todos os `filename` encontrados.
+    Ignora Nextflow work/ dirs (hashes ilegíveis) e dirs utilitários.
     """
     result = {}
-    patterns = [
-        f"**/{filename}",
-    ]
-    for pat in patterns:
-        for p in sorted(ROOT.glob(pat)):
-            # Skip figures/ e local_viz/
-            parts = p.parts
-            if any(x in ("figures", "local_viz", "bin", "__pycache__") for x in parts):
-                continue
-            # O sid é o diretório imediatamente antes de analise/ (ou o pai direto do arquivo)
-            parent = p.parent
-            if parent.name in ("analise", "contact_map", "prolif"):
-                sid_dir = parent.parent
-            else:
-                sid_dir = parent
-            sid = sid_dir.name.lower().replace("-", "").replace("_", "")
-            if sid not in result:
-                result[sid] = p
+    for p in sorted(ROOT.glob(f"**/{filename}")):
+        parts = p.parts
+        if any(x in _SKIP_DIRS for x in parts):
+            continue
+        parent = p.parent
+        if parent.name in ("analise", "contact_map", "prolif"):
+            sid_dir = parent.parent
+        else:
+            sid_dir = parent
+        sid = sid_dir.name.lower().replace("-", "").replace("_", "")
+        if sid not in result:
+            result[sid] = p
     return result
+
+
+def _discover_individual_plots():
+    """
+    Para cada SID com analise/, descobre plots individuais de DM.
+    Retorna dict {sid: {fname: Path}}.
+    """
+    INDIVIDUAL = ["rmsd_bb.png", "rmsd_lig.png", "ncont.png", "hbond.png",
+                  "sasa_ligante.png", "rg.png"]
+    per_sid = {}
+    for fname in INDIVIDUAL:
+        for p in sorted(ROOT.glob(f"**/analise/{fname}")):
+            if any(x in _SKIP_DIRS for x in p.parts):
+                continue
+            sid = p.parent.parent.name.lower().replace("-", "").replace("_", "")
+            per_sid.setdefault(sid, {})[fname] = p
+    return per_sid
+
+
+def _compose_painel_from_individuals(plots_for_sid):
+    """
+    Monta painel 2×2 com plots individuais de analise/ quando painel_completo.png ausente.
+    Retorna fig matplotlib ou None se nenhum arquivo existe.
+    """
+    ORDER  = ["rmsd_bb.png",  "ncont.png", "hbond.png", "rmsd_lig.png"]
+    LABELS = ["RMSD backbone", "Contatos (# átomos)", "H-bonds", "RMSD ligante"]
+    imgs = [(lbl, plots_for_sid.get(fname)) for lbl, fname in zip(LABELS, ORDER)]
+    if not any(p is not None and p.exists() for _, p in imgs):
+        return None
+    fig, axes = plt.subplots(2, 2, figsize=(9, 7), constrained_layout=True)
+    for ax, (lbl, p) in zip(axes.flat, imgs):
+        if p and p.exists():
+            try:
+                ax.imshow(mpimg.imread(str(p)), aspect="auto")
+                ax.axis("off")
+                ax.set_title(lbl, fontsize=9, pad=3)
+            except Exception:
+                placeholder(ax, lbl)
+        else:
+            placeholder(ax, lbl, "arquivo ausente")
+    return fig
 
 
 def _norm(name):
@@ -141,9 +176,16 @@ def render_panel(ax, img_path, label, letter=None):
         add_panel_label(ax, letter)
 
 
-def make_composite(entries, index, n_cols, figsize, fig_title):
+def make_composite(entries, index, n_cols, figsize, fig_title, idx_individual=None):
+    """
+    Monta figura composta. Para cada painel, tenta:
+    1. painel_completo.png do index
+    2. Fallback: compõe 2×2 a partir de plots individuais (rmsd_bb, ncont, hbond, rmsd_lig)
+    3. Placeholder cinza se nada encontrado
+    """
     n = len(entries)
     n_rows = (n + n_cols - 1) // n_cols
+    # Cada célula da grade principal recebe uma sub-imagem do painel
     fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, constrained_layout=True)
     if n_rows == 1 and n_cols == 1:
         axes = np.array([[axes]])
@@ -156,8 +198,32 @@ def make_composite(entries, index, n_cols, figsize, fig_title):
         r, c = divmod(idx, n_cols)
         ax = axes[r, c]
         path = _find(index, patterns)
-        letter = chr(ord("A") + idx)
-        render_panel(ax, path, label, letter)
+
+        # Fallback para plots individuais
+        if (path is None or not path.exists()) and idx_individual:
+            # Encontra o SID do primeiro pattern que tenha plots individuais
+            for pat in patterns:
+                if pat in idx_individual:
+                    sub_fig = _compose_painel_from_individuals(idx_individual[pat])
+                    if sub_fig is not None:
+                        # Salva fig temporária em memória e carrega como imagem
+                        import io
+                        buf = io.BytesIO()
+                        sub_fig.savefig(buf, format="png", dpi=100, bbox_inches="tight")
+                        plt.close(sub_fig)
+                        buf.seek(0)
+                        img = mpimg.imread(buf)
+                        ax.imshow(img, aspect="auto")
+                        ax.axis("off")
+                        ax.set_title(label, fontsize=10, pad=4, fontweight="bold")
+                        ax.text(-0.04, 1.05, f"({chr(ord('A') + idx)})",
+                                transform=ax.transAxes, fontsize=13, fontweight="bold",
+                                va="top", ha="right")
+                        break
+            else:
+                render_panel(ax, path, label, chr(ord("A") + idx))
+        else:
+            render_panel(ax, path, label, chr(ord("A") + idx))
 
     for idx in range(n, n_rows * n_cols):
         r, c = divmod(idx, n_cols)
@@ -169,9 +235,10 @@ def make_composite(entries, index, n_cols, figsize, fig_title):
 
 # ── Funções por figura ─────────────────────────────────────────────────────
 
-def fig1(outdir, idx_painel):
+def fig1(outdir, idx_painel, idx_ind):
     fig = make_composite(GORE4_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
-                         fig_title="Figura 1 — Parâmetros dinâmicos dos complexos série GORE4 (100 ns)")
+                         fig_title="Figura 1 — Parâmetros dinâmicos dos complexos série GORE4 (100 ns)",
+                         idx_individual=idx_ind)
     p = outdir / "Figure_1.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -185,9 +252,10 @@ def fig2(outdir, idx_triad):
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-def fig3(outdir, idx_painel):
+def fig3(outdir, idx_painel, idx_ind):
     fig = make_composite(SKTI_ENTRIES, idx_painel, n_cols=3, figsize=(18, 6),
-                         fig_title="Figura 3 — Parâmetros dinâmicos dos complexos série SKTI (100 ns)")
+                         fig_title="Figura 3 — Parâmetros dinâmicos dos complexos série SKTI (100 ns)",
+                         idx_individual=idx_ind)
     p = outdir / "Figure_3.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -201,9 +269,10 @@ def fig4(outdir, idx_triad):
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-def fig5(outdir, idx_painel):
+def fig5(outdir, idx_painel, idx_ind):
     fig = make_composite(BEN_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
-                         fig_title="Figura 5 — Dissociação da benzamidina em quatro isoformas (200 ns)")
+                         fig_title="Figura 5 — Dissociação da benzamidina em quatro isoformas (200 ns)",
+                         idx_individual=idx_ind)
     p = outdir / "Figure_5.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -240,6 +309,11 @@ def cmd_scan():
         for sid, path in sorted(idx.items()):
             print(f"  {sid:40s}  {path.relative_to(ROOT)}")
 
+    idx_ind = _discover_individual_plots()
+    print(f"\nPlots individuais (analise/rmsd_bb.png etc.):  {len(idx_ind)} SIDs")
+    for sid, plots in sorted(idx_ind.items()):
+        print(f"  {sid:40s}  {sorted(plots.keys())}")
+
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
@@ -266,23 +340,25 @@ def main():
     idx_triad  = _discover("triad_distances.png")
     idx_cmap   = _discover("contact_map.png")
     idx_prolif = _discover("prolif_persistence.png")
+    idx_ind    = _discover_individual_plots()
 
     counts = {
         "painel_completo": len(idx_painel),
         "triad_distances": len(idx_triad),
         "contact_map": len(idx_cmap),
         "prolif": len(idx_prolif),
+        "individual_plots (sids)": len(idx_ind),
     }
     print(f"  Encontrados: {counts}")
     print(f"  Saídas em  : {outdir}")
     print()
 
     figs = {
-        1: lambda: fig1(outdir, idx_painel),
+        1: lambda: fig1(outdir, idx_painel, idx_ind),
         2: lambda: fig2(outdir, idx_triad),
-        3: lambda: fig3(outdir, idx_painel),
+        3: lambda: fig3(outdir, idx_painel, idx_ind),
         4: lambda: fig4(outdir, idx_triad),
-        5: lambda: fig5(outdir, idx_painel),
+        5: lambda: fig5(outdir, idx_painel, idx_ind),
         6: lambda: fig6(outdir, idx_cmap),
         7: lambda: fig7(outdir, idx_prolif),
     }
