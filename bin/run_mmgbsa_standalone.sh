@@ -151,27 +151,37 @@ startframe=${START_FRAME},
 endframe=${END_FRAME},
 interval=1,
 verbose=2,
+keepfiles=2,
 /
 &gb
-igb=2,
+igb=5,
 saltcon=${SALTCON},
+intdiel=1.0,
 /
 &decomp
 idecomp=2,
-dec_verbose=1,
+dec_verbose=3,
+print_res="within 6",
 /
 MEOF
-echo "[OK] mmgbsa.in gerado (startframe=${START_FRAME}, endframe=${END_FRAME})"
+echo "[OK] mmgbsa.in gerado (igb=5, startframe=${START_FRAME}, endframe=${END_FRAME})"
 
 # ── Cria wrapper tleap (corrige bug SS bonds COM_OUT do gmx_MMPBSA 1.6.x) ────
 mkdir -p bin_patch
 
 cat > bin_patch/tleap << 'WEOF'
 #!/usr/bin/env python3
-# Wrapper tleap — corrige SS bonds em COM_OUT/LIG_OUT para complexos
-# proteína-peptídeo E proteína-proteína (ex: SKTI como ligante com SS bonds).
-# Bug gmx_MMPBSA 1.6.x: COM_OUT usa índices errados (não adiciona offset do receptor
-# no LIGANTE, ou usa offset errado no RECEPTOR).
+# Wrapper tleap v3 — corrige bugs gmx_MMPBSA 1.6.x em SS bonds e GAFF2.
+#
+# Bug 1 — COM_OUT receptor offset: COM_OUT usa índices REC-relativos sem
+#   offset do complexo. Fix: substituir pelos índices corretos dos REC bonds.
+#
+# Bug 2 — LIG_OUT SKTI (proteína como ligante): gmx_MMPBSA usa numeração
+#   do PDB original do ligante (que preserva a numeração do complexo GROMACS).
+#   Verificar pelo range real do LIG PDB; só corrigir se fora do range.
+#
+# Bug 3 — GAFF2 atom types (EN3, etc.): gmx_MMPBSA carrega leaprc.gaff (GAFF1)
+#   mas parâmetros ACPYPE são GAFF2. Fix: substituir por leaprc.gaff2.
 import sys, os, re, subprocess
 
 LOG = os.path.join(os.getcwd(), 'tleap_wrapper.log')
@@ -180,19 +190,20 @@ def wlog(msg):
     with open(LOG, 'a') as f:
         f.write(msg + '\n')
 
-def count_pdb_residues(pdb_path):
-    """Conta resíduos únicos no PDB (sequência de ATOM/HETATM)."""
-    seen = set()
+def pdb_res_range(pdb_path):
+    """Retorna (min_resnum, max_resnum) lendo ATOM/HETATM do PDB."""
+    nums = []
     try:
         with open(pdb_path) as f:
             for line in f:
-                if line.startswith(('ATOM','HETATM')):
-                    resseq = line[22:26].strip()
-                    chain  = line[21]
-                    seen.add((chain, resseq))
-        return len(seen)
+                if line.startswith(('ATOM', 'HETATM')):
+                    try:
+                        nums.append(int(line[22:26]))
+                    except ValueError:
+                        pass
     except Exception:
-        return 0
+        pass
+    return (min(nums), max(nums)) if nums else (0, 0)
 
 args = sys.argv[1:]
 wlog(f"[tleap-wrapper] chamado com: {' '.join(args)}")
@@ -204,108 +215,73 @@ for i, a in enumerate(args):
             wlog(f"[tleap-wrapper] arquivo não encontrado: {fpath}")
             break
 
-        content   = open(fpath).read()
-        work_dir  = os.path.dirname(os.path.abspath(fpath))
+        content  = open(fpath).read()
+        work_dir = os.path.dirname(os.path.abspath(fpath))
+        modified = content
+        fixes    = 0
 
-        rec_bonds = re.findall(r'bond\s+REC_OUT\.(\d+)\.SG\s+REC_OUT\.(\d+)\.SG', content)
-        com_bonds = re.findall(r'bond\s+COM_OUT\.(\d+)\.SG\s+COM_OUT\.(\d+)\.SG', content)
-        lig_bonds = re.findall(r'bond\s+LIG_OUT\.(\d+)\.SG\s+LIG_OUT\.(\d+)\.SG', content)
+        # ── Fix 3: GAFF → GAFF2 (atom types EN3, n3, etc.) ─────────────────
+        # leaprc.gaff usa GAFF1; ACPYPE/GAFF2 gera atom types incompatíveis.
+        if 'leaprc.gaff\n' in modified or 'leaprc.gaff"' in modified or "source leaprc.gaff\n" in modified:
+            before = modified
+            modified = re.sub(r'\bleaprc\.gaff\b(?!2)', 'leaprc.gaff2', modified)
+            if modified != before:
+                fixes += 1
+                wlog("[tleap-wrapper] FIX-GAFF2: leaprc.gaff → leaprc.gaff2")
+
+        # ── Extrai bonds do leap.in (já possivelmente modificado) ───────────
+        rec_bonds = re.findall(r'bond\s+REC_OUT\.(\d+)\.SG\s+REC_OUT\.(\d+)\.SG', modified)
+        com_bonds = re.findall(r'bond\s+COM_OUT\.(\d+)\.SG\s+COM_OUT\.(\d+)\.SG', modified)
+        lig_bonds = re.findall(r'bond\s+LIG_OUT\.(\d+)\.SG\s+LIG_OUT\.(\d+)\.SG', modified)
 
         wlog(f"[tleap-wrapper] REC SS bonds ({len(rec_bonds)}): {rec_bonds}")
         wlog(f"[tleap-wrapper] COM SS bonds ({len(com_bonds)}): {com_bonds}")
         wlog(f"[tleap-wrapper] LIG SS bonds ({len(lig_bonds)}): {lig_bonds}")
 
-        modified = content
-        fixes    = 0
-
-        # ── Corrige COM_OUT bonds para a parte RECEPTOR ──────────────────────
-        # O bug original: COM_OUT usa índices REC sem o offset do complexo, ou
-        # usa índice errado. Corrigimos os primeiros len(rec_bonds) COM bonds
-        # para corresponder exatamente aos REC bonds.
+        # ── Fix 1: COM_OUT bonds do RECEPTOR ────────────────────────────────
+        # gmx_MMPBSA 1.6.x escreve COM_OUT com índices iguais ao REC_OUT
+        # (sem offset do complexo). Corrigi-los para igualar REC_OUT.
         if rec_bonds and com_bonds:
-            n_rec_bonds = len(rec_bonds)
-            # Só corrigir COM bonds que claramente correspondem ao receptor
-            for k, ((cw0, cw1), (rr0, rr1)) in enumerate(zip(com_bonds[:n_rec_bonds], rec_bonds)):
+            for (cw0, cw1), (rr0, rr1) in zip(com_bonds[:len(rec_bonds)], rec_bonds):
                 old = f'bond COM_OUT.{cw0}.SG COM_OUT.{cw1}.SG'
                 new = f'bond COM_OUT.{rr0}.SG COM_OUT.{rr1}.SG'
                 if old != new:
                     modified = modified.replace(old, new, 1)
                     fixes += 1
-                    wlog(f"[tleap-wrapper] FIX-REC: '{old}' → '{new}'")
+                    wlog(f"[tleap-wrapper] FIX-REC: {old!r} → {new!r}")
 
-        # ── Corrige LIG_OUT bonds para proteína-ligante com SS bonds ─────────
-        # O bug para SKTI: LIG_OUT usa índices relativos ao COMPLEXO (incorreto)
-        # em vez de índices relativos ao ligante. Detectamos contando resíduos.
+        # ── Fix 2: LIG_OUT bonds (proteína-ligante, ex: SKTI) ────────────────
+        # Estratégia CORRETA: ler o range real do LIG PDB para saber se o
+        # índice é válido. gmx_MMPBSA preserva a numeração original do complexo
+        # GROMACS no LIG PDB — não renumera de 1. Por isso "count_residues"
+        # dá resposta errada; usar min/max do PDB é a única forma segura.
         if lig_bonds:
             lig_pdb = None
             for fname in ('_GMXMMPBSA_LIG.pdb', '_GMXMMPBSA_ligand.pdb'):
-                candidate = os.path.join(work_dir, fname)
-                if os.path.exists(candidate):
-                    lig_pdb = candidate
-                    break
-            n_lig_res = count_pdb_residues(lig_pdb) if lig_pdb else 0
-            wlog(f"[tleap-wrapper] LIG PDB: {lig_pdb}  n_res={n_lig_res}")
+                c = os.path.join(work_dir, fname)
+                if os.path.exists(c):
+                    lig_pdb = c; break
+            lig_min, lig_max = pdb_res_range(lig_pdb) if lig_pdb else (0, 0)
+            wlog(f"[tleap-wrapper] LIG PDB: {lig_pdb}  range=[{lig_min},{lig_max}]")
 
-            rec_pdb = None
-            for fname in ('_GMXMMPBSA_REC.pdb', '_GMXMMPBSA_receptor.pdb'):
-                candidate = os.path.join(work_dir, fname)
-                if os.path.exists(candidate):
-                    rec_pdb = candidate
-                    break
-            n_rec_res = count_pdb_residues(rec_pdb) if rec_pdb else 0
-            wlog(f"[tleap-wrapper] REC PDB: {rec_pdb}  n_res={n_rec_res}")
-
-            if n_lig_res > 0 and n_rec_res > 0:
-                for (lb0, lb1) in lig_bonds:
-                    idx0, idx1 = int(lb0), int(lb1)
-                    # Se os índices são maiores que o tamanho do ligante,
-                    # provavelmente estão com offset do receptor (bug)
-                    if idx0 > n_lig_res or idx1 > n_lig_res:
-                        corrected0 = idx0 - n_rec_res
-                        corrected1 = idx1 - n_rec_res
-                        if corrected0 > 0 and corrected1 > 0:
-                            old = f'bond LIG_OUT.{lb0}.SG LIG_OUT.{lb1}.SG'
-                            new = f'bond LIG_OUT.{corrected0}.SG LIG_OUT.{corrected1}.SG'
-                            modified = modified.replace(old, new, 1)
-                            fixes += 1
-                            wlog(f"[tleap-wrapper] FIX-LIG: '{old}' → '{new}'")
-                        else:
-                            wlog(f"[tleap-wrapper] AVISO: índice LIG corrigido < 1 ({corrected0},{corrected1}) — ignorando")
-                    else:
-                        wlog(f"[tleap-wrapper] LIG bond {lb0}-{lb1} parece correto (dentro de n_lig={n_lig_res})")
-            elif lig_bonds:
-                wlog(f"[tleap-wrapper] AVISO: não foi possível contar resíduos (PDB não encontrado) — LIG bonds inalterados")
-
-        # ── Corrige COM_OUT bonds para LIGANTE (bonds além dos do receptor) ───
-        # Quando o ligante é proteína, gmx_MMPBSA às vezes escreve SS do ligante
-        # como COM_OUT em vez de LIG_OUT, usando índices do ligante sem offset.
-        extra_com_bonds = com_bonds[len(rec_bonds):]
-        if extra_com_bonds and n_lig_res > 0 and n_rec_res > 0:
-            wlog(f"[tleap-wrapper] Extra COM bonds (ligante): {extra_com_bonds}")
-            for (cw0, cw1) in extra_com_bonds:
-                idx0, idx1 = int(cw0), int(cw1)
-                # Se os índices são menores que n_rec_res, são relativos ao ligante
-                # sem o offset; adicionar o offset
-                if idx0 <= n_lig_res and idx1 <= n_lig_res:
-                    corrected0 = idx0 + n_rec_res
-                    corrected1 = idx1 + n_rec_res
-                    old = f'bond COM_OUT.{cw0}.SG COM_OUT.{cw1}.SG'
-                    new = f'bond COM_OUT.{corrected0}.SG COM_OUT.{corrected1}.SG'
-                    modified = modified.replace(old, new, 1)
-                    fixes += 1
-                    wlog(f"[tleap-wrapper] FIX-COM-LIG: '{old}' → '{new}'")
+            for (lb0, lb1) in lig_bonds:
+                idx0, idx1 = int(lb0), int(lb1)
+                if lig_min <= idx0 <= lig_max and lig_min <= idx1 <= lig_max:
+                    # Índices já corretos (dentro do range real do LIG PDB)
+                    wlog(f"[tleap-wrapper] LIG bond {lb0}-{lb1}: já correto")
+                else:
+                    # Fora do range — log de aviso; não modificar sem saber o offset
+                    wlog(f"[tleap-wrapper] AVISO: LIG bond {lb0}-{lb1} fora de [{lig_min},{lig_max}] — não modificado (verificar manualmente)")
 
         if fixes > 0:
             open(fpath, 'w').write(modified)
             wlog(f"[tleap-wrapper] {fixes} correção(ões) aplicada(s) → {fpath}")
-        elif not rec_bonds and not com_bonds and not lig_bonds:
-            wlog("[tleap-wrapper] sem pontes SS — sem correção necessária")
         else:
-            wlog("[tleap-wrapper] índices já corretos — sem modificação")
+            wlog("[tleap-wrapper] nenhuma correção necessária")
 
-        # Log parcial do leap.in para diagnóstico
-        bond_lines = [l.strip() for l in content.splitlines() if 'bond' in l.lower() or '.SG' in l]
-        wlog(f"[tleap-wrapper] linhas SS no leap.in:\n" + '\n'.join(bond_lines[:30]))
+        # Log dos bonds finais para diagnóstico
+        bond_lines = [l.strip() for l in modified.splitlines() if '.SG' in l or 'source leaprc' in l]
+        wlog("[tleap-wrapper] estado final do leap.in:\n" + '\n'.join(bond_lines[:30]))
         break
 
 path_dirs = os.environ.get('PATH', '').split(':')
@@ -315,12 +291,12 @@ for d in path_dirs:
     for name in ('tleap', 'teLeap'):
         exe = os.path.join(d, name)
         if os.path.isfile(exe) and os.access(exe, os.X_OK):
-            wlog(f"[tleap-wrapper] executando: {exe} {' '.join(args)}")
+            wlog(f"[tleap-wrapper] executando: {exe}")
             ret = subprocess.run([exe] + args)
             wlog(f"[tleap-wrapper] retcode: {ret.returncode}")
             sys.exit(ret.returncode)
 
-wlog("[tleap-wrapper] ERRO FATAL: tleap real não encontrado no PATH")
+wlog("[tleap-wrapper] ERRO FATAL: tleap não encontrado no PATH")
 sys.exit(1)
 WEOF
 chmod +x bin_patch/tleap
