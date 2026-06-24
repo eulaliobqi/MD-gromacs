@@ -106,13 +106,13 @@ echo "[OK] Janela de análise: ${START_NS} ns (frame ${START_FRAME}) → frame $
 echo "[OK] ${SALTCON} M NaCl"
 
 # ── Prepara diretório de saída ────────────────────────────────────────────────
-mkdir -p "$OUT_DIR"
-cd "$OUT_DIR"
-
-# Caminhos absolutos necessários dentro de OUT_DIR
+# Resolve paths absolutos ANTES de cd (paths relativos deixam de existir após cd)
 ABS_TPR=$(realpath "$TPR")
 ABS_XTC=$(realpath "$XTC")
 ABS_NDX=$(realpath "$NDX")
+
+mkdir -p "$OUT_DIR"
+cd "$OUT_DIR"
 
 # ── Gera mmgbsa.in ────────────────────────────────────────────────────────────
 cat > mmgbsa.in << MEOF
