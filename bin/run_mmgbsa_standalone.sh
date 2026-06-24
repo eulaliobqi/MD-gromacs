@@ -111,16 +111,33 @@ ABS_TPR=$(realpath "$TPR")
 ABS_XTC=$(realpath "$XTC")
 ABS_NDX=$(realpath "$NDX")
 
-# mmgbsa-env tem GROMACS 2025.4 (TPR v137) mas os TPR foram escritos em v138 (GROMACS 2026).
-# Workaround: usar md.gro como estrutura de referência — qualquer versão GROMACS lê GRO,
-# e tleap reconstrói topologia AMBER por sequência (funciona para peptídeo+proteína).
+# gmx_MMPBSA 1.6.x só aceita .tpr ou .pdb para -cs.
+# mmgbsa-env tem GROMACS 2025.4 (TPR v137) mas TPR foram escritos por GROMACS 2026.0 (v138).
+# Solução: converter md.gro → PDB via MDAnalysis (sem dependência de versão GROMACS).
 GRO="${PROD_DIR}/md.gro"
+PDB_CS="${PROD_DIR}/complex_mmgbsa.pdb"
+ABS_CS="$ABS_TPR"   # default (falha se v138 vs v137)
+
 if [[ -f "$GRO" ]]; then
-    ABS_CS=$(realpath "$GRO")
-    echo "[OK] Usando GRO como -cs (evita incompatibilidade TPR v138 vs gmx 2025.4): $GRO"
+    ABS_GRO=$(realpath "$GRO")
+    if [[ ! -f "$PDB_CS" ]]; then
+        echo "Convertendo md.gro → PDB via MDAnalysis (evita incompatibilidade TPR v138 vs v137)..."
+        mamba run -n md-gromacs python3 -c "
+import MDAnalysis as mda, warnings
+warnings.filterwarnings('ignore')
+u = mda.Universe('${ABS_GRO}')
+u.atoms.write('${PDB_CS}')
+print('[OK] PDB escrito: ${PDB_CS}')
+" 2>&1 | grep -v DeprecationWarning || true
+    fi
+    if [[ -f "$PDB_CS" ]]; then
+        ABS_CS=$(realpath "$PDB_CS")
+        echo "[OK] Usando PDB como -cs: $PDB_CS"
+    else
+        echo "[AVISO] Conversão GRO→PDB falhou; tentando TPR diretamente (pode falhar por versão)"
+    fi
 else
-    ABS_CS="$ABS_TPR"
-    echo "[AVISO] md.gro ausente — usando TPR (pode falhar por versão)"
+    echo "[AVISO] md.gro ausente — usando TPR (pode falhar por incompatibilidade v138 vs v137)"
 fi
 
 mkdir -p "$OUT_DIR"
