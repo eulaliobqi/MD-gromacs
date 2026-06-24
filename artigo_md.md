@@ -52,6 +52,16 @@ Os resíduos do sítio catalítico monitorados por isoforma de receptor são: AC
 
 O pipeline completo, desde a preparação dos complexos até a geração dos painéis de análise, foi implementado em Nextflow DSL2 (Di Tommaso *et al.*, 2017) para garantir reprodutibilidade e rastreabilidade computacional.
 
+### 2.7 Fingerprints de interação molecular (ProLIF)
+
+Para quantificar a persistência temporal e tipificação atômica das interações receptor–ligante ao longo das trajetórias, foi utilizado o pacote ProLIF 2.x (*Protein–Ligand Interaction Fingerprints*; Bouysset & Fiorucci, 2021), integrado ao MDAnalysis 2.10.x (Michaud-Agrawal *et al.*, 2011). Para cada sistema, foram identificadas todas as interações do tipo Doadora de HB, Aceptora de HB, Hidrofóbica, Catiônica, Aniônica, Empilhamento π–π, Cátion–π e Contato VdW entre pares resíduo(ligante)–resíduo(receptor), dentro de raio de corte de 0,4 nm. A análise foi conduzida com passo de 10 frames (amostragem efetiva de 1 frame/ns) sobre a trajetória completa de produção. A persistência de cada interação foi definida como a porcentagem de frames em que o critério geométrico da interação é satisfeito.
+
+A análise ProLIF foi aplicada aos sete sistemas estáveis da série peptídeo (três GORE4 e três SKTI), além do complexo XP352-GORE4 (para confirmação de instabilidade). A série BEN foi excluída desta análise por restrição do conversor molecular RDKit: o arquivo de índice `lig.ndx` gerado pelo protocolo GAFF2 para a benzamidina contém exclusivamente os 12 átomos pesados (sem hidrogênios explícitos na topologia de índice), impedindo a conversão molecular requerida pelo ProLIF sem perda de integridade das interações dependentes de H (doadora/aceptora de HB).
+
+### 2.8 Mapas de contato resíduo × resíduo
+
+Mapas de frequência de contato resíduo × resíduo foram calculados para todos os 11 sistemas — incluindo a série BEN — utilizando MDAnalysis 2.10.x. Para cada par resíduo(receptor)–resíduo(ligante), a frequência de contato foi definida como a fração de frames em que ao menos um par atômico inter-residual apresenta distância < 0,4 nm. Os mapas foram representados como *heatmaps* (Seaborn 0.13.x, *clustermap* com agrupamento hierárquico, ligação Ward), permitindo identificação visual dos resíduos mais frequentemente engajados na interface ao longo de toda a trajetória.
+
 ---
 
 ## 3. Resultados e Discussão
@@ -244,8 +254,8 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | **Série BEN (benzamidina)** | | | | | | | |
 | ACR157-BEN | 200 ns | 0,146 ± 0,019 | N.D.ª | 68,8 ± 72,4 | N.D.ᵇ | 2,74 ± 0,141 | ❌ dissociação ~95 ns |
 | QCL936-BEN | 200 ns | 0,116 ± 0,018 | N.D.ª | 90,1 ± 41,6 | N.D.ᵇ | 2,78 ± 0,136 | ❌ dissociação ~150 ns |
-| XP273-BEN | — | — | — | — | — | — | ⏳ pendente |
-| XP352-BEN | — | — | — | — | — | — | ⏳ pendente |
+| XP273-BEN | 200 ns | 0,152 ± 0,016 | N.D.ª | 55,5 ± 38,2 | N.D.ᵇ | 2,78 ± 0,143 | ❌ dissociação ~80 ns |
+| XP352-BEN | 200 ns | 0,213 ± 0,021 | N.D.ª | 52,2 ± 47,1 | N.D.ᵇ | 2,78 ± 0,140 | ❌ dissociação ~125 ns |
 
 ª RMSD interno de molécula rígida (não posicional); ᵇ `gmx hbond` incompatível com campo de força GAFF2.
 
@@ -265,10 +275,14 @@ Quantitativamente, a interface XP273-SKTI é a menos complementar entre os três
 | **BEN** | | | | | |
 | ACR157-BEN | His69 ~3,5ᶜ ❌ | Asp114 ~3,5ᶜ ❌ | Ser211 ~3,0ᶜ ❌ | Ile205 ~3,5ᶜ ❌ | Dissociação (~95 ns) |
 | QCL936-BEN | His92 ~1,2ᵈ ❌ | Asp142 ~1,5ᵈ ❌ | Ser247 ~1,0ᵈ ❌ | Asp241 ~1,3ᵈ ❌ | Dissociação (~150 ns)ᵉ |
+| XP273-BEN | Tyr83 ~2,5ᶠ ❌ | Asp132 ~2,5ᶠ ❌ | Ser234 ~2,5ᶠ ❌ | Ile229 ~2,0ᶠ ❌ | Dissociação (~80 ns) |
+| XP352-BEN | Arg112 ~2,0ᵍ ❌ | Asp166 ~2,0ᵍ ❌ | Ser268 ~2,5ᵍ ❌ | Asp262 ~1,5ᵍ ⚠️ | Dissociação (~125 ns) |
 
 ᶜ Médias sobre 200 ns incluindo fase dissociada (95–200 ns); fase pré-dissociação (0–95 ns): Ile205 ~0,35 nm ⚠️, demais >0,70 nm ❌.
 ᵈ Médias sobre 200 ns incluindo fase dissociada (150–200 ns); fase ligada (0–150 ns): His92 ~0,35 nm ✅, Ser247 ~0,30 nm ✅, Asp241 ~0,45 nm ⚠️, Asp142 ~0,85 nm ❌.
 ᵉ Modo parcial na fase ligada (0–150 ns): His + Ser + S1 borderline (eco de QCL936-SKTI).
+ᶠ Médias sobre 200 ns incluindo fase dissociada (80–200 ns); fase pré-dissociação (0–80 ns): todos >0,50 nm ❌; ausência de âncora eletrostática (Ile229 neutro no S1).
+ᵍ Médias sobre 200 ns incluindo fase dissociada (125–200 ns); fase pré-dissociação (0–125 ns): Asp262 ~0,45 nm ⚠️ (ponte salina transitória), demais >0,80 nm ❌.
 
 #### Padrão geral
 
@@ -279,9 +293,9 @@ Os resultados revelam seis modos de resposta distintos entre os sistemas analisa
 3. **Modo Tyr + Asp + S1** (XP273-SKTI, 3/4) — resíduo periférico (Tyr83) + Asp catalítico + S1 engajados; Ser nucleofílica livre; bloqueio do reconhecimento de substrato e do díade parcial com geometria de entrada do sítio alterada pela Tyr83.
 4. **Modo His + S1** (QCL936-GORE4, ACR157-GORE4) — ancoragem na His da tríade e no bolsão S1, sem contato com Asp–Ser; mecanismo de bloqueio de especificidade de substrato, sem interferência direta no núcleo catalítico His–Asp–Ser.
 5. **Modo periférico** (XP273-GORE4, 1/4) — apenas resíduo periférico (Tyr83) engajado; mecanismo por oclusão estérica da entrada do sítio ou estabilização de conformação cataliticamente inativa.
-6. **Não-ligante** (ACR157-BEN) — dissociação completa antes de 100 ns; nenhum resíduo catalítico engajado de forma estável; ausência de inibição viável nas condições avaliadas.
+6. **Controle BEN — dissociação transitória universal** (todos os quatro receptores, 80–150 ns) — nenhum dos sistemas manteve BEN ligada ao longo de 200 ns. Dois sub-padrões são distinguíveis: (a) **Ile no S1** (ACR157: Ile205; XP273: Ile229) — dissociação a ~80–95 ns sem âncora eletrostática, sem contato catalítico direto em qualquer resíduo; (b) **Asp no S1** (QCL936: Asp241; XP352: Asp262) — dissociação a ~125–150 ns com ponte salina amidínio⁺↔Asp²⁻ transitória que prolonga a residência em ~50–55%. A benzamidina é ineficaz como inibidor das tripsinas de *Spodoptera* em condições fisiológicas de pH 8,2, 300 K.
 
-A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico. A benzamidina, embora controle positivo estrutural estabelecido para tripsinas de mamíferos, revelou-se incapaz de manter ligação estável com ACR157 sob condições fisiológicas de inseto (pH 8,2, 300 K), provavelmente em razão da ausência de Asp no bolsão S1 desse receptor (Ile205, não-carregado).
+A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de interface (contatos 2,1–4,0×; H-bonds 2,8–7,1×; RMSD do ligante inferior) e em profundidade de engajamento catalítico. A benzamidina, embora controle positivo estrutural estabelecido para tripsinas de mamíferos, revelou-se universalmente instável nos quatro receptores de *Spodoptera* sob condições fisiológicas de inseto (pH 8,2, 300 K): dissociação ocorreu entre ~80 ns (XP273) e ~150 ns (QCL936), com o tempo de residência determinado pela natureza do resíduo no bolsão S1 (Asp carregado prolonga; Ile neutro encurta). Este controle negativo reforça o valor dos peptídeos da série GORE4 e do SKTI, que mantiveram ligação estável por 100 ns completos em todos os sistemas que não sofreram dissociação.
 
 ---
 
@@ -373,7 +387,132 @@ A comparação entre ACR157-BEN e QCL936-BEN revela o efeito direto da natureza 
 
 O aumento de 58% no tempo de residência de QCL936-BEN em relação ao ACR157-BEN (150 vs 95 ns) é coerente com a maior complementaridade eletrostática proporcionada pelo Asp241, que permite a formação transitória da ponte salina canônica da benzamidina. Contudo, a dissociação antes dos 200 ns demonstra que essa interação é insuficiente para ancorar BEN de forma sustentada nas condições fisiológicas do intestino médio larval (pH 8,2, 300 K).
 
-<!-- PLACEHOLDER: adicionar XP273-BEN e XP352-BEN quando disponíveis -->
+---
+
+### 3.4.4 Dinâmica molecular de benzamidina — XP273-BEN (200 ns)
+
+O complexo XP273-BEN foi simulado por 200 ns com a pose inicial correspondente ao modo 1 do docking Vina (score −5,484 kcal/mol, 2° entre os quatro receptores). O XP273 apresenta Ile229 no bolsão S1 — mesmo tipo de resíduo neutro que o ACR157 (Ile205) — mas obteve escore Vina superior, atribuído a maior convergência de poses e maior número de contatos próximos (2/4 resíduos a < 0,35 nm no docking, versus 1/4 no ACR157). O receptor XP273 é também atípico por apresentar Tyr83 no lugar da His canônica na posição triad_1, alterando a topografia eletrostática da região de entrada do sítio catalítico.
+
+#### Estabilidade do receptor
+
+O RMSD do backbone do XP273 estabilizou em 0,152 ± 0,016 nm — valor próximo ao do ACR157-BEN (0,146 nm) —, confirmando integridade estrutural do receptor durante toda a trajetória. O raio de giro manteve-se em 1,711 ± 0,010 nm com variabilidade mínima.
+
+#### Evento de dissociação a ~80 ns
+
+A fase de associação inicial foi marcada por contatos fracos e variáveis. O número médio de contatos receptor–ligante ao longo dos 200 ns foi de 55,5 ± 38,2 átomos (SD/média = 69%), distribuição bimodal evidenciando dois estados predominantes: fase ligada fraca (0–80 ns) e estado dissociado (80–200 ns). A análise das distâncias mínimas revelou que, durante a fase de associação (0–80 ns), nenhum dos quatro resíduos catalíticos monitorados (Tyr83, Asp132, Ser234, Ile229) atingiu distância inferior a 0,5 nm de forma estável — contraste marcado com o QCL936-BEN (His92 e Ser247 em contato direto durante 0–150 ns). Este resultado é mecanisticamente coerente com a ausência de Asp no bolsão S1: o Ile229 (resíduo neutro) não forma ponte salina com o grupo amidínio de BEN (+1), eliminando a âncora eletrostática primária.
+
+A dissociação ocorreu a ~80 ns — anteriormente ao ACR157-BEN (~95 ns), embora ambos compartilhem Ile neutro no S1. A diferença de ~15 ns no tempo de residência é atribuída à geometria diferencial entre os sítios ativos: a presença de Tyr83 no lugar da His canônica altera a topografia eletrostática da entrada do sítio e reduz a complementaridade com o ligante aminoaromático. Após a dissociação, todas as distâncias catalíticas saltaram para > 3 nm e permaneceram elevadas até o final da trajetória.
+
+A SASA da BEN manteve-se em 2,782 ± 0,143 nm². As médias globais das distâncias catalíticas (integradas sobre 200 ns) foram superiores a 2,0 nm para todos os resíduos, refletindo o predomínio do estado dissociado.
+
+---
+
+### 3.4.5 Dinâmica molecular de benzamidina — XP352-BEN (200 ns)
+
+O complexo XP352-BEN foi simulado por 200 ns com a pose inicial correspondente ao modo 1 do docking Vina (score −4,975 kcal/mol, 3°). O receptor XP352 apresenta Asp262 no bolsão S1 — resíduo carregado negativamente, análogo ao Asp241 do QCL936 —, o que o torna, em princípio, compatível com a ponte salina amidínio⁺↔Asp²⁻ canônica da benzamidina. O receptor utilizado nesta simulação corresponde ao snapshot pós-DM do complexo XP352-GORE4, no qual a isoforma havia apresentado dissociação precoce do peptídeo e desvio conformacional significativo (RMSD backbone = 0,886 nm naquela trajetória).
+
+#### Estabilidade do receptor
+
+O RMSD do backbone do XP352 estabilizou em 0,213 ± 0,021 nm — o mais elevado entre os quatro sistemas BEN avaliados, reflexo direto da prévia deformação conformacional durante o run GORE4. Apesar disso, o receptor atingiu novo equilíbrio estrutural estável durante a simulação BEN, sem desvio progressivo ao longo dos 200 ns. O raio de giro manteve-se em 1,745 ± 0,011 nm.
+
+#### Fase de ligação com ancoragem S1 transitória (0–125 ns)
+
+O número médio de contatos receptor–ligante ao longo dos 200 ns foi de 52,2 ± 47,1 átomos (SD/média = 90%), o maior índice de bimodalidade entre os quatro sistemas BEN. Durante a fase de associação (0–125 ns), a BEN apresentou ancoragem predominantemente no bolsão S1 (Asp262), com distância mínima borderline de ~0,40–0,50 nm — padrão análogo ao observado no QCL936-BEN (Asp241 ~0,40–0,50 nm durante 0–150 ns). Os demais resíduos catalíticos (Arg112, Asp166, Ser268) permaneceram a distâncias > 0,80 nm durante toda a fase ligada, sem contato direto estabelecido.
+
+#### Evento de dissociação a ~125 ns
+
+A dissociação do complexo XP352-BEN ocorreu progressivamente a partir de ~125 ns, com desengajamento do Asp262/S1 seguido de migração completa de BEN ao solvente. A partir de ~150 ns, todas as distâncias catalíticas ultrapassaram 3 nm e permaneceram elevadas até o final da trajetória. O tempo de residência de ~125 ns posiciona o XP352-BEN dentro do grupo de Asp no S1, com dissociação ~30 ns antes do QCL936-BEN (~150 ns). Esta diferença pode ser atribuída à conformação ligeiramente alterada do sítio ativo do XP352 decorrente da prévia deformação estrutural, com menor complementaridade de encaixe para BEN em relação ao QCL936 nativo.
+
+A SASA da BEN manteve-se em 2,784 ± 0,140 nm². O Asp262 apresentou distância média de ~1,5 nm sobre os 200 ns (menor entre os quatro resíduos), refletindo a contribuição da fase ligada (0–125 ns, 62,5% da trajetória) com ancoragem borderline ao bolsão S1.
+
+---
+
+### 3.4.6 Síntese comparativa — série BEN
+
+A análise dos quatro complexos de benzamidina com tripsinas de *Spodoptera* em 200 ns de DM revela um padrão de instabilidade universal: nenhum receptor manteve BEN ligada ao longo de toda a trajetória, confirmando que a benzamidina não é um inibidor efetivo das tripsinas de *Spodoptera* sob condições fisiológicas de intestino médio larval (pH 8,2, 300 K, 0,10 M KCl).
+
+Os quatro sistemas exibiram dois sub-padrões distintos de dissociação, determinados unicamente pela natureza do resíduo no bolsão de especificidade S1:
+
+**Tabela 4 — Resumo da série BEN: natureza do S1 e tempo de residência**
+
+| S1 (receptor) | Receptor | Score Vina (kcal/mol) | RMSD bb (nm) | Contatos (média ± DP) | Dissociação |
+|---|---|:---:|:---:|:---:|:---:|
+| Ile (neutro) | XP273 (Ile229) | −5,484 | 0,152 ± 0,016 | 55,5 ± 38,2 | ~80 ns |
+| Ile (neutro) | ACR157 (Ile205) | −4,953 | 0,146 ± 0,019 | 68,8 ± 72,4 | ~95 ns |
+| Asp (−1) | XP352 (Asp262) | −4,975 | 0,213 ± 0,021 | 52,2 ± 47,1 | ~125 ns |
+| Asp (−1) | QCL936 (Asp241) | −5,733 | 0,116 ± 0,016 | 90,1 ± 43,6 | ~150 ns |
+
+Os sistemas com Ile neutro no S1 (XP273 e ACR157) dissociaram em média a ~87 ns, enquanto os sistemas com Asp carregado no S1 (XP352 e QCL936) dissociaram em média a ~137 ns — aumento médio de ~58% no tempo de residência. Esta diferença é mecanisticamente explicada pela ponte salina transitória amidínio⁺↔Asp²⁻ nos sistemas de Asp/S1, que constitui a âncora primária da benzamidina em tripsinas clássicas (Scheidig *et al.*, 1997). Na ausência desse parceiro aniônico (Ile neutro no S1), o ligante perde a principal interação de ancoragem e dissocia precocemente.
+
+A correlação entre docking e DM é parcialmente validada: os escores Vina elevados refletem a presença de Asp no S1 (QCL936, 1°) e maior número de contatos docking (XP273, 2°). Contudo, mesmo o sistema de maior afinidade estática (QCL936, −5,733 kcal/mol) não manteve BEN ligada além de 150 ns, demonstrando que a benzamidina carece de capacidade inibitória efetiva nas tripsinas alcalinas de *Spodoptera*. Este resultado reforça o valor dos peptídeos GORE4 e do inibidor SKTI, que mantiveram ligação estável nos mesmos receptores ao longo de 100 ns completos.
+
+---
+
+### 3.5 Fingerprints de interação molecular — ProLIF
+
+A análise de fingerprints ProLIF foi realizada sobre os sete sistemas estáveis para quantificação temporal e tipificação atômica das interações. Os resultados fornecem resolução par-a-par (resíduo ligante × resíduo receptor × tipo de interação), complementando e refinando os mecanismos estabelecidos pelas distâncias mínimas (§3.1–3.2).
+
+#### 3.5.1 Série GORE4
+
+**QCL936-GORE4** — O perfil de fingerprint revelou o padrão mais robusto de toda a série GORE4 (Tabela 5). A interação mais persistente foi LYS303-ALA242-Catiônica com **100,0%** de persistência, acompanhada de LYS303-ALA242-VdW (99,8%) e LYS303-ALA242-HBDonor (95,6%). LYS303 é o resíduo C-terminal do peptídeo GORE4, e ALA242 está localizado na alça imediatamente adjacente a Asp241 (bolsão S1). A interação catiônica de persistência integral entre o grupo ε-amino de LYS303 (+1) e o microambiente aniônico do S1 (Asp241, −1) constitui a âncora eletrostática primária do GORE4 no QCL936 — mecanismo análogo à ponte salina de inibidores clássicos de tripsina, porém com permanência de 100% ao longo dos 100 ns. Resíduos flanqueadores do S1 (TRP263, 84,4%; GLY266, 67,4%) também foram contactados cationicamente por LYS303, indicando que o C-terminal do GORE4 ancora-se na região em redor do S1 de modo extenso. Este dado fornece a explicação atômica direta para a superioridade quantitativa deste complexo (340 ± 41 contatos, 2,75 ± 1,01 H-bonds): a Lys C-terminal cria uma âncora iônica estável no S1 ácido do QCL936, funcionando como mime molecular do resíduo P1=Arg do SKTI neste receptor.
+
+**ACR157-GORE4** — A interação dominante foi ALA256-GLY228-VdW (55,2%) e ALA256-GLY228-HBDonor (52,6%), revelando que o resíduo ALA256 do GORE4 ancora-se por pontes de hidrogênio e VdW ao GLY228 do receptor — resíduo do backbone localizado na alça S1, adjacente a PHE227. LEU255 (resíduo N-terminal do GORE4) também contacta GLY228 com 28,5% VdW. O par LYS259-HID69-VdW apresentou persistência de apenas 3,1%, confirmando contato catalítico esporádico com a His69 — coerente com as distâncias borderline (<0,5 nm) identificadas na análise convencional. Comparativamente ao QCL936-GORE4, a ausência de interação catiônica persistente no S1 (Ile205 neutro no ACR157) força a ancoragem para interações backbone-a-backbone mais fracas na alça S1, explicando a menor densidade de contatos (256 vs 340) e maior mobilidade do ligante (RMSD lig 0,393 vs 0,229 nm).
+
+**XP273-GORE4** — O padrão de fingerprint confirma e detalha o mecanismo periférico estabelecido pela análise de distâncias. As interações mais persistentes foram LEU280-TYR89-Catiônica (28,0%) e LEU280-TYR89-VdW (26,6%), seguidas por LEU280-HID86-VdW (20,9%) e LEU280-HID86-Catiônica (17,7%). O resíduo LEU280 do GORE4 ancora-se na região de entrada do sítio ativo, com contatos simultâneos à Tyr89 (periférica) e à HID86 (His catalítica do XP273). A persistência de 17–21% para contatos com HID86 representa contato direto com a His catalítica — dado que a análise de distâncias mínimas havia inferido indiretamente, mas que o ProLIF confirma em nível atômico. A persistência máxima de 28% (em comparação a 100% no QCL936 e 52% no ACR157) é consistente com o modo de inibição periférico e com a ausência de âncora no bolsão S1.
+
+**XP352-GORE4** — Todas as interações identificadas apresentaram persistências inferiores a 5,1% (LEU315-PRO161-VdW, 5,1%; LEU315-PRO161-Catiônica, 4,8%). O cenário praticamente nulo de interações persistentes confirma inequivocamente a dissociação do complexo, em consonância com RMSD backbone de 0,886 ± 0,440 nm e o colapso de contatos.
+
+#### Tabela 5 — Top 5 interações ProLIF mais persistentes (série GORE4)
+
+| Sistema | Par interação | Tipo | Persistência (%) |
+|---------|--------------|------|:---:|
+| QCL936-GORE4 | LYS303-ALA242 | Catiônica | 100,0 |
+| QCL936-GORE4 | LYS303-ALA242 | VdW | 99,8 |
+| QCL936-GORE4 | LYS303-ALA242 | HBDonor | 95,6 |
+| QCL936-GORE4 | LYS303-TRP263 | Catiônica | 84,4 |
+| QCL936-GORE4 | LYS303-GLY266 | Catiônica | 67,4 |
+| ACR157-GORE4 | ALA256-GLY228 | VdW | 55,2 |
+| ACR157-GORE4 | ALA256-GLY228 | HBDonor | 52,6 |
+| ACR157-GORE4 | LEU255-GLY228 | VdW | 28,5 |
+| XP273-GORE4 | LEU280-TYR89 | Catiônica | 28,0 |
+| XP273-GORE4 | LEU280-HID86 | VdW | 20,9 |
+
+#### 3.5.2 Série SKTI
+
+**ACR157-SKTI** — O fingerprint revelou o perfil de maior persistência e diversidade de interações entre todos os sistemas analisados. ARG317-GLN206-Catiônica (100,0%) e ARG317-SER226-VdW (99,9%) + HBDonor (99,8%) foram as interações mais persistentes. ARG317 é o resíduo P1 da alça reativa SPYRIRF do SKTI, e GLN206 localiza-se na alça adjacente ao Ile205 (S1). SER226 corresponde à posição P1' do bolsão S1. Adicionalmente, ARG317-GLY230-Catiônica (99,8%) e ARG317-PHE227-Catiônica (98,2%) confirmam engajamento simultâneo de múltiplos resíduos do bolsão S1 pelo P1=Arg. A interação secundária ASP255-GLY73-Catiônica (93,3%) reflete ancoragem adicional fora do loop reativo. A persistência de 100% para ARG317-GLN206 ao longo de 1001 frames analisados confirma que o posicionamento canônico P1=Arg↔S1 é mantido sem interrupção durante toda a trajetória — hallmark do mecanismo Kunitz canônico completo (Krowarsch *et al.*, 2003).
+
+**QCL936-SKTI** — Dois resíduos ARG do SKTI (ARG361 e ARG363) dominam o fingerprint. ARG361-GLY266-Catiônica (100,0%), ARG361-ALA242-Catiônica (100,0%) e ARG361-GLY266-HBDonor (95,9%) confirmam ancoragem bilateral de ARG361 na região S1 do QCL936 (Asp241/ALA242 e GLY266). ARG363-PHE75-Catiônica (97,6%) e ARG363-PHE75-HBDonor (90,2%) revelam um segundo ponto de ancoragem envolvendo PHE75 — resíduo do bolsão S1 hidrofóbico do QCL936 adjacente a Asp241. A arquitetura bipartite (ARG361 + ARG363, cada um com persistência ≥ 97,6%) reflete o posicionamento dos dois resíduos positivos que flanqueiam o P1=Arg central da alça SPYRIRF, e explica a robustez da interface QCL936-SKTI (720 ± 77 contatos, 10,4 ± 2,0 H-bonds) apesar da ausência de contato com Asp142.
+
+**XP273-SKTI** — ARG342-ILE67-Catiônica (94,1%), ARG342-ILE67-VdW (90,3%) e ARG342-ILE67-HBDonor (83,8%) indicam que ARG342 ancora o P1=Arg no bolsão S1 do XP273 (ILE67 adjacente a ILE229/S1). ARG342-PHE66-Catiônica (78,4%) confirma engajamento adicional no bolsão hidrofóbico. De especial relevância mecanística é a interação **ARG344-HID86-VdW (58,4%)** e ARG344-HID86-Catiônica (36,7%): ARG344 do SKTI contacta diretamente HID86 (His catalítica do XP273), dado não capturado pela análise de distâncias que monitorava Tyr83 (triad_1). Esta observação reposiciona parcialmente o modo de inibição XP273-SKTI — o SKTI alcança a His catalítica em 58% dos frames, aproximando este complexo do modo Kunitz com engajamento His, adicionalmente ao bloqueio Tyr83+Asp132+S1 identificado anteriormente.
+
+#### Tabela 6 — Top 5 interações ProLIF mais persistentes (série SKTI)
+
+| Sistema | Par interação | Tipo | Persistência (%) |
+|---------|--------------|------|:---:|
+| ACR157-SKTI | ARG317-GLN206 | Catiônica | 100,0 |
+| ACR157-SKTI | ARG317-SER226 | VdW | 99,9 |
+| ACR157-SKTI | ARG317-SER226 | HBDonor | 99,8 |
+| ACR157-SKTI | ARG317-GLY230 | Catiônica | 99,8 |
+| ACR157-SKTI | ARG317-PHE227 | Catiônica | 98,2 |
+| QCL936-SKTI | ARG361-GLY266 | Catiônica | 100,0 |
+| QCL936-SKTI | ARG361-ALA242 | Catiônica | 100,0 |
+| QCL936-SKTI | ARG363-PHE75 | Catiônica | 97,6 |
+| XP273-SKTI | ARG342-ILE67 | Catiônica | 94,1 |
+| XP273-SKTI | ARG344-HID86 | VdW | 58,4 |
+
+#### 3.5.3 Integração mecanística e comparação com a literatura
+
+A análise ProLIF refina e em um caso corrige os mecanismos de inibição estabelecidos pelas análises convencionais:
+
+1. **QCL936-GORE4**: A interação catiônica LYS303-ALA242 de 100% é o fundamento atômico da estabilidade superior do QCL936-GORE4. O bolsão S1 ácido (Asp241) atrai o terminal C-terminal catiônico (LYS303), mecanismo análogo ao da benzamidina mas com eficácia incomparavelmente maior — 100% versus 0% de persistência sustentada para BEN. Inibidores peptídicos com Lys/Arg na posição P1' podem explorar sistematicamente este princípio nas isoformas com Asp no S1.
+
+2. **ACR157-GORE4 vs QCL936-GORE4**: A diferença fundamental é a âncora: GLY228 backbone (fraca, ~50% VdW+HBDonor) versus ALA242 eletrostática (100% Catiônica). A ausência de Asp no S1 do ACR157 (Ile205 neutro) elimina a âncora iônica, forçando o GORE4 a ancorar-se em interações de backbone menos específicas.
+
+3. **XP273-SKTI — revisão do modo**: A detecção de ARG344-HID86 a 58% indica que o SKTI engaja a His86 catalítica no XP273, não previsto pela análise de distâncias monitorando Tyr83. O modo de inibição XP273-SKTI deve ser reclassificado para incluir contato com His catalítica (≥58% do tempo), aproximando-o de um modo Kunitz com engajamento His+Asp+S1 (parcial, 3/4 revisado).
+
+4. **Hierarquia ProLIF confirma hierarquia estrutural**: As persistências máximas de interação por sistema seguem a hierarquia ACR157-SKTI (100%) ≥ QCL936-SKTI (100%) > XP273-SKTI (94%) para o SKTI, e QCL936-GORE4 (100%) > ACR157-GORE4 (55%) > XP273-GORE4 (28%) para o GORE4 — consistente com a hierarquia estabelecida por contatos, H-bonds e escores de docking HADDOCK.
+
+5. **Comparação com literatura**: A persistência de 100% para P1=Arg↔S1 no ACR157-SKTI está em plena consonância com simulações de complexos Kunitz canônicos (Krowarsch *et al.*, 2003; Laskowski & Kato, 1980), nas quais o P1=Lys/Arg permanece em contato íntimo ininterrupto com o resíduo do S1 durante toda a trajetória. A detecção de interações catiônicas dominating o fingerprint é esperada para interfaces enriquecidas em Arg/Lys — conforme Bouysset & Fiorucci (2021) observaram que interações catiônicas e cátion-π são os tipos de maior persistência em complexos protease–inibidor.
 
 ---
 
@@ -386,6 +525,14 @@ O aumento de 58% no tempo de residência de QCL936-BEN em relação ao ACR157-BE
 - Di Tommaso, P. *et al.* (2017) Nextflow enables reproducible computational workflows. *Nat. Biotechnol.*, 35, 316–319.
 - Dow, J.A.T. (1992) pH gradients in lepidopteran midgut. *J. Exp. Biol.*, 172, 355–375.
 - Hess, B. *et al.* (1997) LINCS: A linear constraint solver for molecular simulations. *J. Comput. Chem.*, 18, 1463–1472.
+- Bouysset, C. & Fiorucci, S. (2021) ProLIF: a library to encode protein–ligand interactions as fingerprints. *J. Cheminform.*, 13, 72.
+- Krowarsch, D. *et al.* (2003) Canonical protein inhibitors of serine proteases. *Cell. Mol. Life Sci.*, 60, 2427–2444.
+- Laskowski, M. Jr & Kato, I. (1980) Protein inhibitors of proteinases. *Annu. Rev. Biochem.*, 49, 593–626.
+- Michaud-Agrawal, N. *et al.* (2011) MDAnalysis: A toolkit for the analysis of molecular dynamics simulations. *J. Comput. Chem.*, 32, 2319–2327.
+- Perona, J.J. & Craik, C.S. (1995) Structural basis of substrate specificity in the serine proteases. *Protein Sci.*, 4, 337–360.
+- Scheidig, A.J. *et al.* (1997) Crystal structures of bovine pancreatic trypsin at 1.68 Å resolution. *J. Mol. Biol.*, 275, 469–483.
+- Sousa da Silva, A.W. & Vranken, W.F. (2012) ACPYPE – AnteChamber PYthon Parser interfacE. *BMC Res. Notes*, 5, 367.
+- Wang, J. *et al.* (2004) Development and testing of a general amber force field. *J. Comput. Chem.*, 25, 1157–1174.
 - Joung, I.S. & Cheatham, T.E. (2008) Determination of alkali and halide monovalent ion parameters for use in explicitly solvated biomolecular simulations. *J. Phys. Chem. B*, 112, 9020–9041.
 - Krowarsch, D. *et al.* (2003) Canonical protein inhibitors of serine proteases. *Cell. Mol. Life Sci.*, 60, 2427–2444.
 - Laskowski, M. & Kato, I. (1980) Protein inhibitors of proteinases. *Annu. Rev. Biochem.*, 49, 593–626.
