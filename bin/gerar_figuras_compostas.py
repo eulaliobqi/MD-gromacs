@@ -2,7 +2,9 @@
 """
 gerar_figuras_compostas.py — Monta figuras compostas para o artigo.
 
-Descobre automaticamente as PNGs individuais de cada sistema e cria:
+Auto-descobre os PNGs individuais de cada sistema nas subpastas *_NEW/MD/,
+results-MD/, results/ e gera:
+
   Figura 1 — Painéis DM série GORE4 (RMSD/contacts/H-bonds/SASA)
   Figura 2 — Distâncias tríade série GORE4
   Figura 3 — Painéis DM série SKTI
@@ -12,9 +14,9 @@ Descobre automaticamente as PNGs individuais de cada sistema e cria:
   Figura 7 — ProLIF fingerprints de persistência
 
 Uso (na raiz do repositório no servidor):
-  python3 bin/gerar_figuras_compostas.py [--outdir figures/]
+  python3 bin/gerar_figuras_compostas.py [--outdir figures/] [--only 1 2 6] [--scan]
 
-Saídas: figures/Figure_1.png ... figures/Figure_7.png  (300 dpi, 180 mm wide)
+Saídas: figures/Figure_N.png  (300 dpi)
 """
 
 import argparse
@@ -28,7 +30,6 @@ try:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     import matplotlib.image as mpimg
-    from matplotlib.gridspec import GridSpec
     import numpy as np
 except ImportError:
     print("ERRO: instalar matplotlib  (mamba install -n md-gromacs matplotlib)")
@@ -36,124 +37,81 @@ except ImportError:
 
 ROOT = Path(__file__).parent.parent
 
-# ── Mapeamento de sistemas ─────────────────────────────────────────────────
-# Cada entrada: (label_artigo, paths_candidatos_para_painel, paths_candidatos_triad)
 
-GORE4_SYSTEMS = [
-    ("QCL936-GORE4\n(estável)",
-     ["results-MD/GORE4/QCL936/painel_completo.png",
-      "ACR157-GORE4_NEW/MD/qcl936-gore4-c3/painel_completo.png"],
-     ["results-MD/GORE4/QCL936/triad_distances.png",
-      "ACR157-GORE4_NEW/MD/qcl936-gore4-c3/triad_distances.png"]),
+# ── Auto-descoberta de arquivos ────────────────────────────────────────────
 
-    ("ACR157-GORE4\n(estável)",
-     ["results-MD/GORE4/ACR157/painel_completo.png",
-      "ACR157-GORE4_NEW/MD/acr157-gore4-c1/painel_completo.png"],
-     ["results-MD/GORE4/ACR157/triad_distances.png",
-      "ACR157-GORE4_NEW/MD/acr157-gore4-c1/triad_distances.png"]),
+def _discover(filename):
+    """
+    Retorna dict {sid_normalizado: Path} para todos os `filename` encontrados
+    nas árvores de simulação. Busca em:
+      - <ROOT>/**/<analise ou vazio>/<filename>
+    sid_normalizado = basename do diretório de simulação em lowercase sem hífens/underscore.
+    """
+    result = {}
+    patterns = [
+        f"**/{filename}",
+    ]
+    for pat in patterns:
+        for p in sorted(ROOT.glob(pat)):
+            # Skip figures/ e local_viz/
+            parts = p.parts
+            if any(x in ("figures", "local_viz", "bin", "__pycache__") for x in parts):
+                continue
+            # O sid é o diretório imediatamente antes de analise/ (ou o pai direto do arquivo)
+            parent = p.parent
+            if parent.name in ("analise", "contact_map", "prolif"):
+                sid_dir = parent.parent
+            else:
+                sid_dir = parent
+            sid = sid_dir.name.lower().replace("-", "").replace("_", "")
+            if sid not in result:
+                result[sid] = p
+    return result
 
-    ("XP273-GORE4\n(estável)",
-     ["results-MD/GORE4/XP273/painel_completo.png",
-      "XP273-GORE4_NEW/MD/xp273-gore4-c1/painel_completo.png"],
-     ["results-MD/GORE4/XP273/triad_distances.png",
-      "XP273-GORE4_NEW/MD/xp273-gore4-c1/triad_distances.png"]),
 
-    ("XP352-GORE4\n(dissociação)",
-     ["results-MD/GORE4/XP352/painel_completo.png",
-      "XP352-GORE4_NEW/MD/xp352-gore4-c4/painel_completo.png"],
-     ["results-MD/GORE4/XP352/triad_distances.png",
-      "XP352-GORE4_NEW/MD/xp352-gore4-c4/triad_distances.png"]),
+def _norm(name):
+    return name.lower().replace("-", "").replace("_", "").replace("\n", "")
+
+
+# ── Catálogo de sistemas (label, padrão sid) ───────────────────────────────
+
+GORE4_ENTRIES = [
+    ("QCL936-GORE4\n(estável)",    ["qcl936gore4c3", "qcl936gore4c1", "qcl936gore4"]),
+    ("ACR157-GORE4\n(estável)",    ["acr157gore4c1", "acr157gore4"]),
+    ("XP273-GORE4\n(estável)",     ["xp273gore4c1", "xp273gore4"]),
+    ("XP352-GORE4\n(dissociação)", ["xp352gore4c4", "xp352gore4c1", "xp352gore4"]),
 ]
 
-SKTI_SYSTEMS = [
-    ("ACR157-SKTI\n(canônico 4/4)",
-     ["results-MD/SKTI/ACR157/painel_completo.png",
-      "ACR157-SKTI_NEW/MD/acr157-skti-c2/painel_completo.png"],
-     ["results-MD/SKTI/ACR157/triad_distances.png",
-      "ACR157-SKTI_NEW/MD/acr157-skti-c2/triad_distances.png"]),
-
-    ("QCL936-SKTI\n(His+Ser+S1)",
-     ["results-MD/SKTI/QCL936/painel_completo.png",
-      "QCL936-SKTI_NEW/MD/qcl936-skti-c2/painel_completo.png"],
-     ["results-MD/SKTI/QCL936/triad_distances.png",
-      "QCL936-SKTI_NEW/MD/qcl936-skti-c2/triad_distances.png"]),
-
-    ("XP273-SKTI\n(Tyr+Asp+S1)",
-     ["results-MD/SKTI/XP273/painel_completo.png",
-      "XP273-SKTI_NEW/MD/xp273-skti-c2/painel_completo.png"],
-     ["results-MD/SKTI/XP273/triad_distances.png",
-      "XP273-SKTI_NEW/MD/xp273-skti-c2/triad_distances.png"]),
+SKTI_ENTRIES = [
+    ("ACR157-SKTI\n(canônico 4/4)", ["acr157sktic2", "acr157sktic1", "acr157skti"]),
+    ("QCL936-SKTI\n(His+Ser+S1)",   ["qcl936sktic2", "qcl936sktic1", "qcl936skti"]),
+    ("XP273-SKTI\n(Tyr+Asp+S1)",    ["xp273sktic2", "xp273sktic1", "xp273skti"]),
 ]
 
-BEN_SYSTEMS = [
-    ("XP273-BEN\n(~80 ns, S1=Ile229)",
-     ["results/XP273-BEN/XP273-BEN/painel_completo.png",
-      "results-MD/BEN/XP273/painel_completo.png"]),
-
-    ("ACR157-BEN\n(~95 ns, S1=Ile205)",
-     ["results/ACR157-BEN/ACR157-BEN/painel_completo.png",
-      "results-MD/BEN/ACR157/painel_completo.png"]),
-
-    ("XP352-BEN\n(~125 ns, S1=Asp262)",
-     ["results/XP352-BEN/XP352-BEN/painel_completo.png",
-      "results-MD/BEN/XP352/painel_completo.png"]),
-
-    ("QCL936-BEN\n(~150 ns, S1=Asp241)",
-     ["results/QCL936-BEN/QCL936-BEN/painel_completo.png",
-      "results-MD/BEN/QCL936/painel_completo.png"]),
+BEN_ENTRIES = [
+    ("XP273-BEN\n(~80 ns, S1=Ile229)",  ["xp273ben", "xp273benxp273ben"]),
+    ("ACR157-BEN\n(~95 ns, S1=Ile205)", ["acr157ben", "acr157benacr157ben"]),
+    ("XP352-BEN\n(~125 ns, S1=Asp262)", ["xp352ben", "xp352benxp352ben"]),
+    ("QCL936-BEN\n(~150 ns, S1=Asp241)",["qcl936ben", "qcl936benqcl936ben"]),
 ]
 
-CONTACT_MAP_SYSTEMS = [
-    # (label, path_candidates)
-    ("QCL936-GORE4",  ["results-MD/GORE4/QCL936/contact_map/contact_map.png",
-                       "ACR157-GORE4_NEW/MD/qcl936-gore4-c3/contact_map/contact_map.png"]),
-    ("ACR157-GORE4",  ["results-MD/GORE4/ACR157/contact_map/contact_map.png",
-                       "ACR157-GORE4_NEW/MD/acr157-gore4-c1/contact_map/contact_map.png"]),
-    ("XP273-GORE4",   ["results-MD/GORE4/XP273/contact_map/contact_map.png",
-                       "XP273-GORE4_NEW/MD/xp273-gore4-c1/contact_map/contact_map.png"]),
-    ("ACR157-SKTI",   ["results-MD/SKTI/ACR157/contact_map/contact_map.png",
-                       "ACR157-SKTI_NEW/MD/acr157-skti-c2/contact_map/contact_map.png"]),
-    ("QCL936-SKTI",   ["results-MD/SKTI/QCL936/contact_map/contact_map.png",
-                       "QCL936-SKTI_NEW/MD/qcl936-skti-c2/contact_map/contact_map.png"]),
-    ("XP273-SKTI",    ["results-MD/SKTI/XP273/contact_map/contact_map.png",
-                       "XP273-SKTI_NEW/MD/xp273-skti-c2/contact_map/contact_map.png"]),
-]
-
-PROLIF_SYSTEMS = [
-    ("QCL936-GORE4",  ["results-MD/GORE4/QCL936/prolif/prolif_persistence.png",
-                       "ACR157-GORE4_NEW/MD/qcl936-gore4-c3/prolif/prolif_persistence.png"]),
-    ("ACR157-GORE4",  ["results-MD/GORE4/ACR157/prolif/prolif_persistence.png",
-                       "ACR157-GORE4_NEW/MD/acr157-gore4-c1/prolif/prolif_persistence.png"]),
-    ("XP273-GORE4",   ["results-MD/GORE4/XP273/prolif/prolif_persistence.png",
-                       "XP273-GORE4_NEW/MD/xp273-gore4-c1/prolif/prolif_persistence.png"]),
-    ("ACR157-SKTI",   ["results-MD/SKTI/ACR157/prolif/prolif_persistence.png",
-                       "ACR157-SKTI_NEW/MD/acr157-skti-c2/prolif/prolif_persistence.png"]),
-    ("QCL936-SKTI",   ["results-MD/SKTI/QCL936/prolif/prolif_persistence.png",
-                       "QCL936-SKTI_NEW/MD/qcl936-skti-c2/prolif/prolif_persistence.png"]),
-    ("XP273-SKTI",    ["results-MD/SKTI/XP273/prolif/prolif_persistence.png",
-                       "XP273-SKTI_NEW/MD/xp273-skti-c2/prolif/prolif_persistence.png"]),
-]
+STABLE_ENTRIES = GORE4_ENTRIES[:3] + SKTI_ENTRIES  # 6 sistemas estáveis para Fig 6-7
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-def resolve(candidates):
-    """Retorna primeiro caminho existente ou None."""
-    for c in candidates:
-        p = ROOT / c
-        if p.exists():
-            return p
+def _find(index, patterns):
+    """Busca no index por qualquer um dos patterns."""
+    for pat in patterns:
+        if pat in index:
+            return index[pat]
+    # Tentativa parcial: prefixo
+    for key, path in index.items():
+        for pat in patterns:
+            if pat in key or key in pat:
+                return path
     return None
 
 
-def load_img(path):
-    if path is None:
-        return None
-    try:
-        return mpimg.imread(str(path))
-    except Exception:
-        return None
-
+# ── Funções de renderização ────────────────────────────────────────────────
 
 def placeholder(ax, label, msg="arquivo não encontrado\n(rodar no servidor)"):
     ax.set_facecolor("#f0f0f0")
@@ -163,22 +121,30 @@ def placeholder(ax, label, msg="arquivo não encontrado\n(rodar no servidor)"):
     ax.axis("off")
 
 
-def panel_letter(i):
-    return chr(ord("A") + i)
-
-
 def add_panel_label(ax, letter, fontsize=13):
     ax.text(-0.04, 1.05, f"({letter})", transform=ax.transAxes,
             fontsize=fontsize, fontweight="bold", va="top", ha="right")
 
 
-def make_composite(system_list, key_fn, n_cols, figsize, fig_title,
-                   letter_labels=True):
-    """Cria figura composta com as imagens de cada sistema."""
-    n = len(system_list)
+def render_panel(ax, img_path, label, letter=None):
+    if img_path and img_path.exists():
+        try:
+            img = mpimg.imread(str(img_path))
+            ax.imshow(img, aspect="auto")
+            ax.axis("off")
+            ax.set_title(label, fontsize=10, pad=4, fontweight="bold")
+        except Exception as e:
+            placeholder(ax, label, f"erro ao carregar:\n{e}")
+    else:
+        placeholder(ax, label)
+    if letter:
+        add_panel_label(ax, letter)
+
+
+def make_composite(entries, index, n_cols, figsize, fig_title):
+    n = len(entries)
     n_rows = (n + n_cols - 1) // n_cols
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize,
-                              constrained_layout=True)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize, constrained_layout=True)
     if n_rows == 1 and n_cols == 1:
         axes = np.array([[axes]])
     elif n_rows == 1:
@@ -186,23 +152,13 @@ def make_composite(system_list, key_fn, n_cols, figsize, fig_title,
     elif n_cols == 1:
         axes = axes[:, np.newaxis]
 
-    for idx, entry in enumerate(system_list):
+    for idx, (label, patterns) in enumerate(entries):
         r, c = divmod(idx, n_cols)
         ax = axes[r, c]
-        label = entry[0]
-        candidates = key_fn(entry)
-        path = resolve(candidates)
-        img = load_img(path)
-        if img is not None:
-            ax.imshow(img, aspect="auto")
-            ax.axis("off")
-            ax.set_title(label, fontsize=10, pad=4, fontweight="bold")
-        else:
-            placeholder(ax, label)
-        if letter_labels:
-            add_panel_label(ax, panel_letter(idx))
+        path = _find(index, patterns)
+        letter = chr(ord("A") + idx)
+        render_panel(ax, path, label, letter)
 
-    # Ocultar eixos excedentes
     for idx in range(n, n_rows * n_cols):
         r, c = divmod(idx, n_cols)
         axes[r, c].axis("off")
@@ -211,140 +167,130 @@ def make_composite(system_list, key_fn, n_cols, figsize, fig_title,
     return fig
 
 
-# ── Figura 1 — Painéis DM GORE4 ───────────────────────────────────────────
-def fig1(outdir):
-    fig = make_composite(
-        GORE4_SYSTEMS,
-        key_fn=lambda e: e[1],
-        n_cols=2,
-        figsize=(14, 10),
-        fig_title="Figura 1 — Parâmetros dinâmicos dos complexos série GORE4 (100 ns)"
-    )
-    out = outdir / "Figure_1.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 1: {out}")
+# ── Funções por figura ─────────────────────────────────────────────────────
+
+def fig1(outdir, idx_painel):
+    fig = make_composite(GORE4_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
+                         fig_title="Figura 1 — Parâmetros dinâmicos dos complexos série GORE4 (100 ns)")
+    p = outdir / "Figure_1.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 2 — Tríade GORE4 ────────────────────────────────────────────────
-def fig2(outdir):
-    fig = make_composite(
-        GORE4_SYSTEMS,
-        key_fn=lambda e: e[2],
-        n_cols=2,
-        figsize=(14, 10),
-        fig_title="Figura 2 — Distâncias mínimas ao sítio catalítico — série GORE4"
-    )
-    out = outdir / "Figure_2.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 2: {out}")
+def fig2(outdir, idx_triad):
+    fig = make_composite(GORE4_ENTRIES, idx_triad, n_cols=2, figsize=(14, 10),
+                         fig_title="Figura 2 — Distâncias mínimas ao sítio catalítico — série GORE4")
+    p = outdir / "Figure_2.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 3 — Painéis DM SKTI ────────────────────────────────────────────
-def fig3(outdir):
-    fig = make_composite(
-        SKTI_SYSTEMS,
-        key_fn=lambda e: e[1],
-        n_cols=3,
-        figsize=(18, 6),
-        fig_title="Figura 3 — Parâmetros dinâmicos dos complexos série SKTI (100 ns)"
-    )
-    out = outdir / "Figure_3.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 3: {out}")
+def fig3(outdir, idx_painel):
+    fig = make_composite(SKTI_ENTRIES, idx_painel, n_cols=3, figsize=(18, 6),
+                         fig_title="Figura 3 — Parâmetros dinâmicos dos complexos série SKTI (100 ns)")
+    p = outdir / "Figure_3.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 4 — Tríade SKTI ────────────────────────────────────────────────
-def fig4(outdir):
-    fig = make_composite(
-        SKTI_SYSTEMS,
-        key_fn=lambda e: e[2],
-        n_cols=3,
-        figsize=(18, 6),
-        fig_title="Figura 4 — Distâncias mínimas ao sítio catalítico — série SKTI"
-    )
-    out = outdir / "Figure_4.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 4: {out}")
+def fig4(outdir, idx_triad):
+    fig = make_composite(SKTI_ENTRIES, idx_triad, n_cols=3, figsize=(18, 6),
+                         fig_title="Figura 4 — Distâncias mínimas ao sítio catalítico — série SKTI")
+    p = outdir / "Figure_4.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 5 — Dissociação BEN ────────────────────────────────────────────
-def fig5(outdir):
-    fig = make_composite(
-        BEN_SYSTEMS,
-        key_fn=lambda e: e[1],
-        n_cols=2,
-        figsize=(14, 10),
-        fig_title="Figura 5 — Dissociação da benzamidina (BEN) em quatro isoformas (200 ns)"
-    )
-    out = outdir / "Figure_5.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 5: {out}")
+def fig5(outdir, idx_painel):
+    fig = make_composite(BEN_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
+                         fig_title="Figura 5 — Dissociação da benzamidina em quatro isoformas (200 ns)")
+    p = outdir / "Figure_5.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 6 — Mapas de contato ───────────────────────────────────────────
-def fig6(outdir):
-    fig = make_composite(
-        CONTACT_MAP_SYSTEMS,
-        key_fn=lambda e: e[1],
-        n_cols=3,
-        figsize=(18, 12),
-        fig_title="Figura 6 — Mapas de frequência de contato resíduo×resíduo (dist < 0,4 nm)"
-    )
-    out = outdir / "Figure_6.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 6: {out}")
+def fig6(outdir, idx_cmap):
+    fig = make_composite(STABLE_ENTRIES, idx_cmap, n_cols=3, figsize=(18, 12),
+                         fig_title="Figura 6 — Mapas de frequência de contato resíduo×resíduo (dist < 0,4 nm)")
+    p = outdir / "Figure_6.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-# ── Figura 7 — ProLIF persistence ─────────────────────────────────────────
-def fig7(outdir):
-    fig = make_composite(
-        PROLIF_SYSTEMS,
-        key_fn=lambda e: e[1],
-        n_cols=3,
-        figsize=(18, 12),
-        fig_title="Figura 7 — Fingerprints ProLIF: persistência temporal de interações (%)"
-    )
-    out = outdir / "Figure_7.png"
-    fig.savefig(out, dpi=300, bbox_inches="tight")
-    plt.close(fig)
-    print(f"  [OK] Figura 7: {out}")
+def fig7(outdir, idx_prolif):
+    fig = make_composite(STABLE_ENTRIES, idx_prolif, n_cols=3, figsize=(18, 12),
+                         fig_title="Figura 7 — Fingerprints ProLIF: persistência temporal de interações (%)")
+    p = outdir / "Figure_7.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
+
+
+# ── Scan para debug ────────────────────────────────────────────────────────
+
+def cmd_scan():
+    print("=== Descoberta automática de arquivos ===")
+    for fname, desc in [
+        ("painel_completo.png", "Painéis DM"),
+        ("triad_distances.png", "Distâncias tríade"),
+        ("contact_map.png",     "Contact maps"),
+        ("prolif_persistence.png", "ProLIF"),
+    ]:
+        idx = _discover(fname)
+        print(f"\n{desc} ({fname}):  {len(idx)} encontrados")
+        for sid, path in sorted(idx.items()):
+            print(f"  {sid:40s}  {path.relative_to(ROOT)}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--outdir", default="figures",
-                        help="Diretório de saída das figuras (default: figures/)")
+    parser.add_argument("--outdir", default="figures")
     parser.add_argument("--only", type=int, nargs="+",
-                        help="Gerar apenas as figuras indicadas, ex: --only 1 2 6")
+                        help="Gerar apenas figuras indicadas, ex: --only 1 2")
+    parser.add_argument("--scan", action="store_true",
+                        help="Listar todos os PNGs encontrados (diagnóstico)")
     args = parser.parse_args()
+
+    if args.scan:
+        cmd_scan()
+        return
 
     outdir = ROOT / args.outdir
     outdir.mkdir(parents=True, exist_ok=True)
-    print(f"Gerando figuras em: {outdir}")
+
+    # Constrói índices uma vez
+    print("Descobrindo arquivos no repositório...")
+    idx_painel = _discover("painel_completo.png")
+    idx_triad  = _discover("triad_distances.png")
+    idx_cmap   = _discover("contact_map.png")
+    idx_prolif = _discover("prolif_persistence.png")
+
+    counts = {
+        "painel_completo": len(idx_painel),
+        "triad_distances": len(idx_triad),
+        "contact_map": len(idx_cmap),
+        "prolif": len(idx_prolif),
+    }
+    print(f"  Encontrados: {counts}")
+    print(f"  Saídas em  : {outdir}")
     print()
 
-    figs = {1: fig1, 2: fig2, 3: fig3, 4: fig4, 5: fig5, 6: fig6, 7: fig7}
+    figs = {
+        1: lambda: fig1(outdir, idx_painel),
+        2: lambda: fig2(outdir, idx_triad),
+        3: lambda: fig3(outdir, idx_painel),
+        4: lambda: fig4(outdir, idx_triad),
+        5: lambda: fig5(outdir, idx_painel),
+        6: lambda: fig6(outdir, idx_cmap),
+        7: lambda: fig7(outdir, idx_prolif),
+    }
     to_run = args.only if args.only else list(figs.keys())
-
     for n in to_run:
         if n in figs:
-            figs[n](outdir)
-        else:
-            print(f"  [SKIP] Figura {n}: não definida")
+            figs[n]()
 
-    print()
-    print("=== Resumo ===")
-    for p in sorted(outdir.glob("Figure_*.png")):
-        size_kb = p.stat().st_size // 1024
-        print(f"  {p.name:20s}  {size_kb:5d} KB")
     print()
     print("[OK] gerar_figuras_compostas.py concluído")
     print("Para embedder no Word: python3 bin/embed_figuras_docx.py")
