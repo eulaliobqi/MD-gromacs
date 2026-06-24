@@ -111,6 +111,18 @@ ABS_TPR=$(realpath "$TPR")
 ABS_XTC=$(realpath "$XTC")
 ABS_NDX=$(realpath "$NDX")
 
+# mmgbsa-env tem GROMACS 2025.4 (TPR v137) mas os TPR foram escritos em v138 (GROMACS 2026).
+# Workaround: usar md.gro como estrutura de referência — qualquer versão GROMACS lê GRO,
+# e tleap reconstrói topologia AMBER por sequência (funciona para peptídeo+proteína).
+GRO="${PROD_DIR}/md.gro"
+if [[ -f "$GRO" ]]; then
+    ABS_CS=$(realpath "$GRO")
+    echo "[OK] Usando GRO como -cs (evita incompatibilidade TPR v138 vs gmx 2025.4): $GRO"
+else
+    ABS_CS="$ABS_TPR"
+    echo "[AVISO] md.gro ausente — usando TPR (pode falhar por versão)"
+fi
+
 mkdir -p "$OUT_DIR"
 cd "$OUT_DIR"
 
@@ -209,7 +221,7 @@ echo '[mmgbsa-env] PATH patch ativo'
 
 gmx_MMPBSA -O \\
     -i mmgbsa.in \\
-    -cs '${ABS_TPR}' \\
+    -cs '${ABS_CS}' \\
     -ct '${ABS_XTC}' \\
     -ci '${ABS_NDX}' \\
     -cg Receptor Ligante \\
