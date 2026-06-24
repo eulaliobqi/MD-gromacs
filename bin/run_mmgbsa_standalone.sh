@@ -160,7 +160,7 @@ intdiel=1.0,
 &decomp
 idecomp=2,
 dec_verbose=3,
-print_res="within 6",
+print_res="all",
 /
 MEOF
 echo "[OK] mmgbsa.in gerado (igb=5, startframe=${START_FRAME}, endframe=${END_FRAME})"
