@@ -56,6 +56,8 @@ O pipeline completo, desde a preparação dos complexos até a geração dos pai
 
 Para quantificar a persistência temporal e tipificação atômica das interações receptor–ligante ao longo das trajetórias, foi utilizado o pacote ProLIF 2.x (*Protein–Ligand Interaction Fingerprints*; Bouysset & Fiorucci, 2021), integrado ao MDAnalysis 2.10.x (Michaud-Agrawal *et al.*, 2011). Para cada sistema, foram identificadas todas as interações do tipo Doadora de HB, Aceptora de HB, Hidrofóbica, Catiônica, Aniônica, Empilhamento π–π, Cátion–π e Contato VdW entre pares resíduo(ligante)–resíduo(receptor), dentro de raio de corte de 0,4 nm. A análise foi conduzida com passo de 10 frames (amostragem efetiva de 1 frame/ns) sobre a trajetória completa de produção. A persistência de cada interação foi definida como a porcentagem de frames em que o critério geométrico da interação é satisfeito.
 
+Os mapas de contato resíduo×resíduo (Figura 6) evidenciam visualmente a diferença de cobertura de interface: SKTI gera padrão extenso de alta frequência sobre múltiplos resíduos do receptor, enquanto GORE4 (5 aa) produz padrão linear e concentrado na região S1.
+
 A análise ProLIF foi aplicada aos sete sistemas estáveis da série peptídeo (três GORE4 e três SKTI), além do complexo XP352-GORE4 (para confirmação de instabilidade). A série BEN foi excluída desta análise por restrição do conversor molecular RDKit: o arquivo de índice `lig.ndx` gerado pelo protocolo GAFF2 para a benzamidina contém exclusivamente os 12 átomos pesados (sem hidrogênios explícitos na topologia de índice), impedindo a conversão molecular requerida pelo ProLIF sem perda de integridade das interações dependentes de H (doadora/aceptora de HB).
 
 ### 2.8 Mapas de contato resíduo × resíduo
@@ -68,11 +70,15 @@ Mapas de frequência de contato resíduo × resíduo foram calculados para todos
 
 ### 3.1 Estabilidade estrutural dos complexos — série GORE4
 
+[[FIG_1]]
+
+[[FIG_2]]
+
 Os complexos das isoformas de tripsina de *Spodoptera* com o peptídeo GORE4 foram avaliados quanto à estabilidade estrutural, integridade da interface de ligação e posicionamento no sítio catalítico. Os resultados são apresentados por isoforma receptora.
 
 #### QCL936-GORE4 (cluster 3)
 
-A simulação do complexo QCL936-GORE4 (cluster 3) foi conduzida por 100 ns a 300 K e pH 8,2 e apresentou comportamento estável ao longo de toda a trajetória. O RMSD do backbone do receptor atingiu um platô de 0,124 ± 0,017 nm após aproximadamente 20 ns (Figura X), indicando equilíbrio conformacional do receptor sem deriva estrutural. O raio de giro manteve-se em 1,718 ± 0,006 nm com variação mínima (< 1%), confirmando que a estrutura terciária da tripsina não sofreu perturbações decorrentes da presença do peptídeo.
+A simulação do complexo QCL936-GORE4 (cluster 3) foi conduzida por 100 ns a 300 K e pH 8,2 e apresentou comportamento estável ao longo de toda a trajetória. O RMSD do backbone do receptor atingiu um platô de 0,124 ± 0,017 nm após aproximadamente 20 ns (Figura 1A), indicando equilíbrio conformacional do receptor sem deriva estrutural. O raio de giro manteve-se em 1,718 ± 0,006 nm com variação mínima (< 1%), confirmando que a estrutura terciária da tripsina não sofreu perturbações decorrentes da presença do peptídeo.
 
 O RMSD do ligante estabilizou em 0,229 ± 0,042 nm, valor inferior a 0,3 nm durante praticamente toda a simulação, indicando que o peptídeo QCL936 manteve sua conformação de docking ao longo dos 100 ns sem sinais de dissociação do sítio de ligação. Não foi observado o padrão de dissociação característico (colapso de contatos seguido de aumento abrupto das distâncias), o que corrobora a estabilidade do complexo.
 
@@ -86,11 +92,11 @@ A SASA do ligante manteve-se em 9,04 ± 0,37 nm² sem tendência crescente, indi
 
 #### Posicionamento no sítio catalítico
 
-A análise das distâncias mínimas entre o peptídeo QCL936 e os resíduos do sítio ativo revelou um padrão de ligação predominantemente associado ao bolsão S1 e à His periférica da tríade (Figura X). O peptídeo manteve distância média de 0,242 ± 0,05 nm da His92 e de 0,227 ± 0,04 nm do Asp241 (bolsão S1) durante toda a simulação, ambas claramente inferiores ao limiar de 0,5 nm adotado para caracterização de contato catalítico direto.
+A análise das distâncias mínimas entre o peptídeo QCL936 e os resíduos do sítio ativo revelou um padrão de ligação predominantemente associado ao bolsão S1 e à His periférica da tríade (Figura 2A). O peptídeo manteve distância média de 0,242 ± 0,05 nm da His92 e de 0,227 ± 0,04 nm do Asp241 (bolsão S1) durante toda a simulação, ambas claramente inferiores ao limiar de 0,5 nm adotado para caracterização de contato catalítico direto.
 
 Por outro lado, as distâncias ao Asp142 (1,719 ± 0,18 nm) e à Ser247 (1,195 ± 0,14 nm) permaneceram superiores a 0,5 nm ao longo da maior parte da trajetória, indicando que o GORE4 não interage diretamente com o núcleo Asp-Ser da tríade catalítica do QCL936. Uma leve aproximação a esses resíduos foi observada após os 80 ns, sugerindo reorientação conformacional tardia do peptídeo, porém sem cruzar o limiar de contato catalítico.
 
-Esse padrão de ligação — ancoragem no bolsão S1 e na His da tríade, com ausência de contato com Asp e Ser — caracteriza o QCL936 como um inibidor com mecanismo predominantemente de bloqueio do reconhecimento de substrato, ocupando o bolsão de especificidade (S1) e impedindo o acesso da região de clivagem do substrato ao sítio ativo, sem necessariamente inibir diretamente o mecanismo catalítico nucleofílico. Este perfil é biologicamente relevante, dado que o bolsão S1 de serino-proteases determina a especificidade pelo substrato (Perona & Craik, 1995), e inibidores que o ocupam de forma estável constituem candidatos potentes e seletivos.
+Esse padrão de ligação — ancoragem no bolsão S1 e na His da tríade, com ausência de contato com Asp e Ser (Figura 2A) — caracteriza o QCL936 como um inibidor com mecanismo predominantemente de bloqueio do reconhecimento de substrato, ocupando o bolsão de especificidade (S1) e impedindo o acesso da região de clivagem do substrato ao sítio ativo, sem necessariamente inibir diretamente o mecanismo catalítico nucleofílico. Este perfil é biologicamente relevante, dado que o bolsão S1 de serino-proteases determina a especificidade pelo substrato (Perona & Craik, 1995), e inibidores que o ocupam de forma estável constituem candidatos potentes e seletivos.
 
 ---
 
@@ -98,7 +104,7 @@ Esse padrão de ligação — ancoragem no bolsão S1 e na His da tríade, com a
 
 A simulação do complexo ACR157-GORE4 (cluster 1) foi conduzida por 100 ns a 300 K e pH 8,2. O RMSD do backbone do receptor estabilizou em 0,165 ± 0,016 nm após os primeiros 20 ns, valor ligeiramente superior ao do QCL936 (0,124 nm), porém ainda indicativo de estabilidade estrutural satisfatória. O raio de giro manteve-se em 1,863 ± 0,007 nm com variação inferior a 1%, confirmando a integridade da estrutura terciária da tripsina ao longo de toda a trajetória.
 
-O RMSD do ligante apresentou média de 0,393 ± 0,068 nm, consideravelmente superior ao do QCL936 (0,229 nm), refletindo maior mobilidade conformacional do peptídeo ACR157 no sítio de ligação. Não obstante, o peptídeo permaneceu estável na interface receptor–ligante sem sinais de dissociação ao longo dos 100 ns.
+O RMSD do ligante apresentou média de 0,393 ± 0,068 nm, consideravelmente superior ao do QCL936 (0,229 nm), refletindo maior mobilidade conformacional do peptídeo ACR157 no sítio de ligação (Figura 1B). Não obstante, o peptídeo permaneceu estável na interface receptor–ligante sem sinais de dissociação ao longo dos 100 ns.
 
 #### Interface de ligação
 
@@ -112,7 +118,7 @@ A análise das distâncias mínimas entre o peptídeo ACR157 e os resíduos do s
 
 O Asp114 — componente do díade Asp-Ser da tríade catalítica — manteve-se distante da interface ao longo de toda a trajetória, com média superior a 1,0 nm. A Ser211 (Ser nucleofílica) apresentou comportamento intermediário, com distâncias oscilando entre 0,5 e 0,9 nm, sem estabelecimento de contato estável.
 
-O padrão de ligação do ACR157 guarda similaridade qualitativa com o do QCL936 — ancoragem predominante na histidina da tríade e no bolsão S1, com ausência de interação direta com o par Asp–Ser — porém com interface menos compacta (menor número de contatos e maior mobilidade do ligante). O engajamento da His69 pode comprometer a rede de transferência de próton da tríade catalítica (His69–Asp114–Ser211), enquanto a ocupação do bolsão S1 bloqueia o acesso do substrato ao sítio de clivagem. Assim, o ACR157 apresenta potencial mecanismo dual: interferência parcial na ativação da Ser nucleofílica e bloqueio de especificidade de substrato, embora com eficiência de ligação aparentemente inferior ao QCL936 nos parâmetros quantitativos analisados.
+O padrão de ligação do ACR157 guarda similaridade qualitativa com o do QCL936 (Figura 2B) — ancoragem predominante na histidina da tríade e no bolsão S1, com ausência de interação direta com o par Asp–Ser — porém com interface menos compacta (menor número de contatos e maior mobilidade do ligante). O engajamento da His69 pode comprometer a rede de transferência de próton da tríade catalítica (His69–Asp114–Ser211), enquanto a ocupação do bolsão S1 bloqueia o acesso do substrato ao sítio de clivagem. Assim, o ACR157 apresenta potencial mecanismo dual: interferência parcial na ativação da Ser nucleofílica e bloqueio de especificidade de substrato, embora com eficiência de ligação aparentemente inferior ao QCL936 nos parâmetros quantitativos analisados.
 
 ---
 
@@ -120,13 +126,13 @@ O padrão de ligação do ACR157 guarda similaridade qualitativa com o do QCL936
 
 A simulação do complexo XP352-GORE4 (cluster 4, rank 3) revelou comportamento marcadamente distinto dos complexos QCL936-c3 e ACR157-c1, com evidências de instabilidade estrutural e dissociação do ligante ao longo dos 100 ns.
 
-O RMSD do backbone do receptor apresentou valor médio de 0,886 ± 0,440 nm, aproximadamente sete vezes superior ao observado para o QCL936 (0,124 nm), sem atingir platô de estabilização ao longo da trajetória. O perfil crescente e sem convergência indica desvio conformacional progressivo do receptor, sugestivo de rearranjo estrutural significativo. O raio de giro (1,837 ± 0,074 nm) também exibiu variabilidade substancialmente maior do que os complexos estáveis (σ = 0,074 nm versus 0,006–0,007 nm para QCL936 e ACR157), corroborando a instabilidade conformacional do receptor neste complexo.
+O RMSD do backbone do receptor apresentou valor médio de 0,886 ± 0,440 nm, aproximadamente sete vezes superior ao observado para o QCL936 (0,124 nm), sem atingir platô de estabilização ao longo da trajetória (Figura 1D). O perfil crescente e sem convergência indica desvio conformacional progressivo do receptor, sugestivo de rearranjo estrutural significativo. O raio de giro (1,837 ± 0,074 nm) também exibiu variabilidade substancialmente maior do que os complexos estáveis (σ = 0,074 nm versus 0,006–0,007 nm para QCL936 e ACR157), corroborando a instabilidade conformacional do receptor neste complexo.
 
 #### Interface de ligação e sítio catalítico
 
 O número médio de contatos receptor–ligante foi de 62,7 ± 142,9 átomos — inferior ao limiar de 150 átomos e com desvio padrão superior à própria média, padrão diagnóstico de dissociação intermitente. O perfil temporal revelou comportamento bimodal: períodos prolongados com contatos próximos de zero, intercalados com excursões transitórias de retorno à interface, sem estabelecimento de ligação estável.
 
-A análise das distâncias mínimas ao sítio catalítico confirmou o sinal de dissociação: os resíduos Arg112, Asp166, Ser268 e Asp262 apresentaram distâncias médias superiores a 1,0 nm durante a maior parte da trajetória, com tendência progressivamente crescente. O gráfico de ocupação da tríade mostrou todos os quatro resíduos catalíticos com distâncias médias acima de 0,5 nm, sem contato direto estabelecido em nenhum deles. A análise de RMSF confirmou alta mobilidade do ligante (pico de flutuação destacado no painel), consistente com peptídeo não ancorado no sítio de ligação.
+A análise das distâncias mínimas ao sítio catalítico confirmou o sinal de dissociação (Figura 2D): os resíduos Arg112, Asp166, Ser268 e Asp262 apresentaram distâncias médias superiores a 1,0 nm durante a maior parte da trajetória, com tendência progressivamente crescente. O gráfico de ocupação da tríade mostrou todos os quatro resíduos catalíticos com distâncias médias acima de 0,5 nm, sem contato direto estabelecido em nenhum deles. A análise de RMSF confirmou alta mobilidade do ligante (pico de flutuação destacado no painel), consistente com peptídeo não ancorado no sítio de ligação.
 
 #### Diagnóstico
 
@@ -136,7 +142,7 @@ O complexo XP352-GORE4 (cluster 4, rank 3) não apresentou ligação estável so
 
 #### XP273-GORE4 (cluster 1, _NEW)
 
-A simulação do complexo XP273-GORE4 (cluster 1) foi conduzida por 100 ns a 300 K e pH 8,2 e demonstrou comportamento estável ao longo de toda a trajetória. O RMSD do backbone do receptor estabilizou em 0,248 ± 0,045 nm após os primeiros 20 ns, permanecendo abaixo de 0,3 nm na maior parte da trajetória, o que indica estabilidade estrutural satisfatória do receptor. Notavelmente, o raio de giro apresentou perfil bimodal (1,727 ± 0,023 nm), com uma transição conformacional do receptor em torno de 30–60 ns seguida de retorno próximo ao estado inicial, sugerindo amostragem entre dois estados conformacionais levemente distintos durante a simulação. O RMSD do ligante foi de 0,317 ± 0,068 nm, valor intermediário entre o QCL936 (0,229 nm) e o ACR157 (0,393 nm), indicando mobilidade moderada no sítio de ligação.
+A simulação do complexo XP273-GORE4 (cluster 1) foi conduzida por 100 ns a 300 K e pH 8,2 e demonstrou comportamento estável ao longo de toda a trajetória. O RMSD do backbone do receptor estabilizou em 0,248 ± 0,045 nm após os primeiros 20 ns, permanecendo abaixo de 0,3 nm na maior parte da trajetória, o que indica estabilidade estrutural satisfatória do receptor. Notavelmente, o raio de giro apresentou perfil bimodal (1,727 ± 0,023 nm), com uma transição conformacional do receptor em torno de 30–60 ns seguida de retorno próximo ao estado inicial, sugerindo amostragem entre dois estados conformacionais levemente distintos durante a simulação. O RMSD do ligante foi de 0,317 ± 0,068 nm, valor intermediário entre o QCL936 (0,229 nm) e o ACR157 (0,393 nm), indicando mobilidade moderada no sítio de ligação (Figura 1C).
 
 #### Interface de ligação
 
@@ -146,7 +152,7 @@ O número médio de contatos receptor–ligante foi de 260 ± 60 átomos, valor 
 
 A análise das distâncias mínimas revelou um padrão de ancoragem distinto dos demais complexos. O XP273 manteve contato próximo com a Tyr83 (resíduo periférico do sítio ativo, triad_1), com distância média abaixo de 0,5 nm durante grande parte da trajetória. Os resíduos Asp132 e Ser234 — componentes do díade Asp-Ser da tríade catalítica — apresentaram contato borderline com distâncias oscilando em torno de 0,5–0,65 nm, sem contato direto estável estabelecido. O Ile229 (bolsão S1, triad_4) manteve-se distante da interface, com distância média superior a 1,0 nm ao longo de toda a trajetória.
 
-Este padrão contrasta com os complexos QCL936 e ACR157, que apresentaram engajamento consistente do bolsão S1. O XP273 ancora predominantemente na região periférica do sítio ativo (Tyr83), sem bloquear o bolsão de especificidade S1. Esse mecanismo pode atuar por oclusão estérica da entrada do sítio ativo ou por estabilização de uma conformação cataliticamente inativa do receptor — hipótese suportada pelo comportamento bimodal do raio de giro. Embora o SASA do ligante indique enterramento expressivo, a ausência de contato com S1 e a interação apenas borderline com Asp132/Ser234 sugerem que a potência inibitória do XP273 pode ser inferior à do QCL936, que combina ancoragem na tríade com bloqueio direto do bolsão S1.
+Este padrão contrasta com os complexos QCL936 e ACR157, que apresentaram engajamento consistente do bolsão S1 (Figura 2C). O XP273 ancora predominantemente na região periférica do sítio ativo (Tyr83), sem bloquear o bolsão de especificidade S1. Esse mecanismo pode atuar por oclusão estérica da entrada do sítio ativo ou por estabilização de uma conformação cataliticamente inativa do receptor — hipótese suportada pelo comportamento bimodal do raio de giro. Embora o SASA do ligante indique enterramento expressivo, a ausência de contato com S1 e a interação apenas borderline com Asp132/Ser234 sugerem que a potência inibitória do XP273 pode ser inferior à do QCL936, que combina ancoragem na tríade com bloqueio direto do bolsão S1.
 
 ---
 
@@ -156,13 +162,17 @@ Este padrão contrasta com os complexos QCL936 e ACR157, que apresentaram engaja
 
 ### 3.2 Estabilidade estrutural dos complexos — série SKTI
 
+[[FIG_3]]
+
+[[FIG_4]]
+
 Os mesmos receptores foram avaliados em complexo com o SKTI, inibidor natural de referência. A alça reativa SPYRIRF do SKTI (P1 = Arg) é estruturalmente projetada para encaixar no bolsão S1 das serino-proteases, tornando esses complexos referências funcionais para comparação com os dados da série GORE4.
 
 #### ACR157-SKTI (cluster 2)
 
 A simulação do complexo ACR157-SKTI (cluster 2) foi conduzida por 100 ns a 300 K e pH 8,2 e apresentou comportamento estável em toda a trajetória. O RMSD do backbone do receptor atingiu platô de 0,281 ± 0,027 nm após os primeiros 20 ns, valor comparável ao do complexo ACR157-GORE4-c1 (0,165 nm), confirmando que a presença de um ligante proteico volumoso (177 resíduos) não desestabiliza a estrutura terciária do receptor. O raio de giro do complexo (receptor + SKTI) estabilizou-se em 2,225 ± 0,009 nm com variabilidade inferior a 0,5%, indicando que a estrutura quaternária do heterodímero foi mantida compacta e sem eventos de abertura ou desprendimento do ligante ao longo dos 100 ns.
 
-O RMSD do ligante estabilizou em 0,206 ± 0,017 nm — valor notavelmente inferior ao do GORE4 no mesmo receptor (0,393 nm) —, demonstrando que o SKTI permaneceu em conformação praticamente rígida dentro do sítio de ligação. Esse resultado é consistente com a natureza estrutural dos inibidores Kunitz: proteínas globulares estabilizadas por pontes dissulfeto com alça reativa pré-organizada para interação com o sítio catalítico (Laskowski & Kato, 1980). A análise de RMSF por resíduo confirmou flutuação muito baixa ao longo da cadeia do SKTI (< 0,05 nm na maior parte dos resíduos), com picos restritos a regiões de alça periférica, sem mobilidade significativa na região da alça reativa SPYRIRF.
+O RMSD do ligante estabilizou em 0,206 ± 0,017 nm — valor notavelmente inferior ao do GORE4 no mesmo receptor (0,393 nm) —, demonstrando que o SKTI permaneceu em conformação praticamente rígida dentro do sítio de ligação (Figura 3A). Esse resultado é consistente com a natureza estrutural dos inibidores Kunitz: proteínas globulares estabilizadas por pontes dissulfeto com alça reativa pré-organizada para interação com o sítio catalítico (Laskowski & Kato, 1980). A análise de RMSF por resíduo confirmou flutuação muito baixa ao longo da cadeia do SKTI (< 0,05 nm na maior parte dos resíduos), com picos restritos a regiões de alça periférica, sem mobilidade significativa na região da alça reativa SPYRIRF.
 
 #### Interface de ligação
 
@@ -172,7 +182,7 @@ As pontes de hidrogênio receptor–ligante apresentaram média de 13,524 ± 2,9
 
 #### Posicionamento no sítio catalítico
 
-A análise das distâncias mínimas entre o SKTI e os resíduos do sítio ativo revelou engajamento direto e simultâneo de dois dos três componentes da tríade catalítica. A His69 manteve distância média de 0,224 nm ao longo de toda a trajetória, e a Ser211 apresentou distância média de 0,221 nm — ambas claramente abaixo do limiar de 0,5 nm para contato catalítico direto, com oscilações mínimas que demonstram estabilidade do posicionamento. O Asp114 apresentou distância de 0,312 nm, compatível com contato de segundo plano que constrainge a geometria da tríade. O Ile205 (bolsão S1) manteve distância média de 0,180 nm — engajamento direto do bolsão de especificidade, confirmando bloqueio integral do sítio ativo.
+A análise das distâncias mínimas entre o SKTI e os resíduos do sítio ativo revelou engajamento direto e simultâneo de dois dos três componentes da tríade catalítica (Figura 4A). A His69 manteve distância média de 0,224 nm ao longo de toda a trajetória, e a Ser211 apresentou distância média de 0,221 nm — ambas claramente abaixo do limiar de 0,5 nm para contato catalítico direto, com oscilações mínimas que demonstram estabilidade do posicionamento. O Asp114 apresentou distância de 0,312 nm, compatível com contato de segundo plano que constrainge a geometria da tríade. O Ile205 (bolsão S1) manteve distância média de 0,180 nm — engajamento direto do bolsão de especificidade, confirmando bloqueio integral do sítio ativo.
 
 Este padrão de ligação — engajamento simultâneo de todos os quatro resíduos catalíticos (His69, Asp114, Ser211 e Ile205/S1) — é o mecanismo Kunitz canônico completo: a alça reativa SPYRIRF insere seu resíduo P1 (Arg) diretamente no sítio ativo, formando um complexo enzima–inibidor análogo ao intermediário tetraédrico da catálise, sem progressão da hidrólise (Krowarsch *et al.*, 2003; Laskowski & Kato, 1980). A His69 não consegue abstrair o próton da Ser211 (necessário para a ativação nucleofílica) porque a geometria da rede de transferência de próton é bloqueada pela presença do resíduo P1 do inibidor, e o bolsão S1 é simultaneamente ocupado pelo P1=Arg.
 
@@ -186,7 +196,7 @@ Adicionalmente, a interface ACR157-SKTI é significativamente mais estável em t
 
 A simulação do complexo QCL936-SKTI (cluster 2) foi conduzida por 100 ns a 300 K e pH 8,2. O RMSD do backbone do receptor apresentou média de 0,370 ± 0,054 nm, valor markadamente superior ao observado para o mesmo receptor em complexo com o GORE4 (0,124 nm) e o mais elevado entre os três complexos SKTI analisados (ACR157: 0,281 nm; XP273: 0,288 nm), indicando que a presença do SKTI induz maior flexibilidade conformacional no QCL936. O perfil temporal não exibiu tendência crescente consistente ao longo da trajetória, e o raio de giro do complexo estabilizou-se em 2,296 ± 0,015 nm, confirmando que o complexo como um todo permaneceu globalmente coeso.
 
-O RMSD do ligante atingiu 0,209 ± 0,025 nm — valor próximo ao registrado para o ACR157-SKTI (0,206 nm) e notavelmente inferior ao do GORE4 no mesmo receptor (0,229 nm), evidenciando que o SKTI manteve conformação estável dentro do sítio de ligação sem sinais de dissociação.
+O RMSD do ligante atingiu 0,209 ± 0,025 nm — valor próximo ao registrado para o ACR157-SKTI (0,206 nm) e notavelmente inferior ao do GORE4 no mesmo receptor (0,229 nm), evidenciando que o SKTI manteve conformação estável dentro do sítio de ligação sem sinais de dissociação (Figura 3B).
 
 #### Interface de ligação
 
@@ -194,7 +204,7 @@ O número médio de contatos receptor–ligante foi de 720 ± 77 átomos, valor 
 
 #### Posicionamento no sítio catalítico
 
-A análise das distâncias mínimas revelou um padrão de ancoragem envolvendo três dos quatro resíduos monitorados: a His92 manteve distância média de 0,179 nm, a Ser247 (serina nucleofílica) apresentou distância média de 0,176 nm e o Asp241 (bolsão S1) atingiu 0,178 nm — todos em contato íntimo e estável ao longo de toda a trajetória. Em contraste, o Asp142 — componente do díade catalítico responsável pela estabilização da His protonada durante o ciclo de transferência de próton — permaneceu distante da interface (~0,73 nm), sem contato estabelecido com o ligante em nenhuma fase da simulação.
+A análise das distâncias mínimas revelou um padrão de ancoragem envolvendo três dos quatro resíduos monitorados (Figura 4B): a His92 manteve distância média de 0,179 nm, a Ser247 (serina nucleofílica) apresentou distância média de 0,176 nm e o Asp241 (bolsão S1) atingiu 0,178 nm — todos em contato íntimo e estável ao longo de toda a trajetória. Em contraste, o Asp142 — componente do díade catalítico responsável pela estabilização da His protonada durante o ciclo de transferência de próton — permaneceu distante da interface (~0,73 nm), sem contato estabelecido com o ligante em nenhuma fase da simulação.
 
 Este padrão — His92 + Ser247 + Asp241/S1, com ausência de contato com Asp142 — constitui um modo de inibição até então não observado entre os complexos analisados. Contrasta diretamente com o QCL936-GORE4, no qual apenas His92 e Asp241 foram engajados (modo His+S1, 2/4), revelando que o SKTI — graças à sua maior extensão e à pré-organização estrutural da alça SPYRIRF — consegue posicionar seu resíduo P1=Arg de forma a engajar adicionalmente a Ser247 nucleofílica. O engajamento simultâneo de His92 e Ser247 indica que o SKTI interfere diretamente com a geometria do par nucleofílico da tríade, bloqueando a etapa de ativação da serina, enquanto o bolsão S1 permanece simultaneamente ocupado.
 
@@ -210,7 +220,7 @@ Em termos quantitativos, a interface QCL936-SKTI é menos complementar do que a 
 
 A simulação do complexo XP273-SKTI (cluster 2) foi conduzida por 100 ns a 300 K e pH 8,2 e apresentou comportamento estável em toda a trajetória. O RMSD do backbone do receptor atingiu 0,288 ± 0,042 nm, valor comparável ao do ACR157-SKTI (0,281 nm) e ao QCL936-SKTI (0,307 nm), indicando que a presença do ligante proteico volumoso não desestabilizou o receptor. O raio de giro estabilizou-se em 2,325 ± 0,015 nm com variabilidade inferior a 1%, confirmando que o heterodímero XP273–SKTI permaneceu globalmente coeso ao longo de toda a trajetória.
 
-O RMSD do ligante apresentou média de 0,224 ± 0,017 nm — valor notavelmente estável, comparável ao do ACR157-SKTI (0,206 nm) e inferior ao do GORE4 no mesmo receptor (0,317 nm) —, demonstrando que o SKTI adota conformação praticamente rígida dentro do sítio de ligação do XP273, comportamento consistente com a natureza pré-organizada dos inibidores Kunitz.
+O RMSD do ligante apresentou média de 0,224 ± 0,017 nm — valor notavelmente estável, comparável ao do ACR157-SKTI (0,206 nm) e inferior ao do GORE4 no mesmo receptor (0,317 nm), visível no perfil temporal (Figura 3C) —, demonstrando que o SKTI adota conformação praticamente rígida dentro do sítio de ligação do XP273, comportamento consistente com a natureza pré-organizada dos inibidores Kunitz.
 
 #### Interface de ligação
 
@@ -218,7 +228,7 @@ O número médio de contatos receptor–ligante foi de 596 ± 88 átomos, valor 
 
 #### Posicionamento no sítio catalítico
 
-A análise das distâncias mínimas entre o SKTI e os resíduos do sítio ativo revelou um padrão de ancoragem intermediário entre o modo canônico Kunitz observado no ACR157 e o modo His+S1 observado no QCL936. A Tyr83 (triad_1, resíduo periférico monitorado por alinhamento estrutural) manteve distância média de 0,098 nm — contato íntimo e estável ao longo de toda a trajetória. O Asp132 (triad_2) apresentou distância média de 0,119 nm, igualmente em contato direto com o ligante. O Ile229 (bolsão S1, triad_4) manteve distância de 0,118 nm, caracterizando engajamento simultâneo do bolsão de especificidade, padrão ausente no complexo XP273-GORE4.
+A análise das distâncias mínimas entre o SKTI e os resíduos do sítio ativo revelou um padrão de ancoragem intermediário entre o modo canônico Kunitz observado no ACR157 e o modo His+S1 observado no QCL936 (Figura 4C). A Tyr83 (triad_1, resíduo periférico monitorado por alinhamento estrutural) manteve distância média de 0,098 nm — contato íntimo e estável ao longo de toda a trajetória. O Asp132 (triad_2) apresentou distância média de 0,119 nm, igualmente em contato direto com o ligante. O Ile229 (bolsão S1, triad_4) manteve distância de 0,118 nm, caracterizando engajamento simultâneo do bolsão de especificidade, padrão ausente no complexo XP273-GORE4.
 
 Em contraste, a Ser234 (triad_3, serina nucleofílica) apresentou distância média de 0,718 nm — superior ao limiar de 0,5 nm e consistente com ausência de contato direto ao longo de toda a simulação. Assim, o padrão de ligação do XP273-SKTI envolve três dos quatro resíduos monitorados (Tyr83 + Asp132 + Ile229), com a serina nucleofílica como único componente não engajado.
 
@@ -301,6 +311,8 @@ A série SKTI supera consistentemente a série GORE4 em todos os parâmetros de 
 
 ### 3.4 Docking de benzamidina (BEN) como controle positivo estrutural
 
+[[FIG_5]]
+
 A benzamidina (BEN; CAS 618-39-3; MW 120,15 Da) é um inibidor competitivo reversível de serino-proteases amplamente utilizado como ligante de referência para o bolsão de especificidade S1 de tripsinas (Scheidig *et al.*, 1997). Sua amidina monocíclica forma uma ponte salina com o Asp do S1 e ligações de hidrogênio com resíduos da alça S1, ocupando o sítio de reconhecimento do resíduo P1 do substrato (Ki ≈ 8 μM para tripsina bovina). Neste trabalho, BEN foi incluída como controle positivo estrutural para validar a especificidade dos sítios modelados e comparar sua afinidade computacional com a dos peptídeos GORE4 e SKTI.
 
 #### Protocolo de docking
@@ -340,7 +352,7 @@ O RMSD do backbone do ACR157 estabilizou em 0,146 ± 0,019 nm ao longo dos 200 n
 
 #### Evento de dissociação a ~95 ns
 
-Até aproximadamente 95 ns, BEN manteve 60–150 contatos com ACR157, com o Ile205 (bolsão S1) em distância mínima de 0,3–0,4 nm (borderline de contato). Os demais resíduos catalíticos (His69 ~0,8 nm; Asp114 ~0,9 nm; Ser211 ~0,7 nm) permaneceram além do limiar de contato direto durante toda a fase de associação inicial — padrão coerente com BEN posicionada no bolsão S1, sem alcançar a tríade His–Asp–Ser. Ao atingir ~95 ns, ocorreu evento súbito e irreversível de dissociação: todas as distâncias aos resíduos catalíticos saltaram para 3–6 nm, os contatos colapsaram a zero, e BEN migrou ao solvente, permanecendo não-ligada pelos 105 ns restantes da trajetória.
+Até aproximadamente 95 ns, BEN manteve 60–150 contatos com ACR157, com o Ile205 (bolsão S1) em distância mínima de 0,3–0,4 nm (borderline de contato). Os demais resíduos catalíticos (His69 ~0,8 nm; Asp114 ~0,9 nm; Ser211 ~0,7 nm) permaneceram além do limiar de contato direto durante toda a fase de associação inicial — padrão coerente com BEN posicionada no bolsão S1, sem alcançar a tríade His–Asp–Ser. Ao atingir ~95 ns, ocorreu evento súbito e irreversível de dissociação (Figura 5B): todas as distâncias aos resíduos catalíticos saltaram para 3–6 nm, os contatos colapsaram a zero, e BEN migrou ao solvente, permanecendo não-ligada pelos 105 ns restantes da trajetória.
 
 O valor médio de contatos ao longo dos 200 ns foi de 68,8 ± 72,4 átomos — desvio padrão superior à média, padrão diagnóstico de dissociação — refletindo o comportamento bimodal: fase de associação fraca (0–95 ns) seguida de estado dissociado (95–200 ns). A SASA da BEN foi de 2,74 ± 0,141 nm², coerente com o tamanho reduzido da molécula; durante a fase ligada, o enterramento foi parcial e transitório.
 
@@ -371,7 +383,7 @@ Este padrão — His92 + Ser247 + Asp241/S1 bordeline, sem contato com Asp142 �
 
 #### Evento de dissociação a ~150 ns
 
-A partir de ~150 ns, ocorreu dissociação progressiva e irreversível: os contatos declinaram de ~110 para zero ao longo de 25 ns (150–175 ns), e todas as distâncias catalíticas saltaram simultaneamente para 4–7 nm. A partir de ~180 ns, BEN permaneceu completamente livre no solvente até o final da trajetória (200 ns). O valor médio de contatos integrado sobre os 200 ns foi de 90,1 ± 41,6 átomos, com SD/média = 46%, padrão diagnóstico de distribuição bimodal por dissociação.
+A partir de ~150 ns, ocorreu dissociação progressiva e irreversível (Figura 5D): os contatos declinaram de ~110 para zero ao longo de 25 ns (150–175 ns), e todas as distâncias catalíticas saltaram simultaneamente para 4–7 nm. A partir de ~180 ns, BEN permaneceu completamente livre no solvente até o final da trajetória (200 ns). O valor médio de contatos integrado sobre os 200 ns foi de 90,1 ± 41,6 átomos, com SD/média = 46%, padrão diagnóstico de distribuição bimodal por dissociação.
 
 #### Comparação com ACR157-BEN e implicações mecanísticas
 
@@ -401,7 +413,7 @@ O RMSD do backbone do XP273 estabilizou em 0,152 ± 0,016 nm — valor próximo 
 
 A fase de associação inicial foi marcada por contatos fracos e variáveis. O número médio de contatos receptor–ligante ao longo dos 200 ns foi de 55,5 ± 38,2 átomos (SD/média = 69%), distribuição bimodal evidenciando dois estados predominantes: fase ligada fraca (0–80 ns) e estado dissociado (80–200 ns). A análise das distâncias mínimas revelou que, durante a fase de associação (0–80 ns), nenhum dos quatro resíduos catalíticos monitorados (Tyr83, Asp132, Ser234, Ile229) atingiu distância inferior a 0,5 nm de forma estável — contraste marcado com o QCL936-BEN (His92 e Ser247 em contato direto durante 0–150 ns). Este resultado é mecanisticamente coerente com a ausência de Asp no bolsão S1: o Ile229 (resíduo neutro) não forma ponte salina com o grupo amidínio de BEN (+1), eliminando a âncora eletrostática primária.
 
-A dissociação ocorreu a ~80 ns — anteriormente ao ACR157-BEN (~95 ns), embora ambos compartilhem Ile neutro no S1. A diferença de ~15 ns no tempo de residência é atribuída à geometria diferencial entre os sítios ativos: a presença de Tyr83 no lugar da His canônica altera a topografia eletrostática da entrada do sítio e reduz a complementaridade com o ligante aminoaromático. Após a dissociação, todas as distâncias catalíticas saltaram para > 3 nm e permaneceram elevadas até o final da trajetória.
+A dissociação ocorreu a ~80 ns (Figura 5A) — anteriormente ao ACR157-BEN (~95 ns), embora ambos compartilhem Ile neutro no S1. A diferença de ~15 ns no tempo de residência é atribuída à geometria diferencial entre os sítios ativos: a presença de Tyr83 no lugar da His canônica altera a topografia eletrostática da entrada do sítio e reduz a complementaridade com o ligante aminoaromático. Após a dissociação, todas as distâncias catalíticas saltaram para > 3 nm e permaneceram elevadas até o final da trajetória.
 
 A SASA da BEN manteve-se em 2,782 ± 0,143 nm². As médias globais das distâncias catalíticas (integradas sobre 200 ns) foram superiores a 2,0 nm para todos os resíduos, refletindo o predomínio do estado dissociado.
 
@@ -421,7 +433,7 @@ O número médio de contatos receptor–ligante ao longo dos 200 ns foi de 52,2 
 
 #### Evento de dissociação a ~125 ns
 
-A dissociação do complexo XP352-BEN ocorreu progressivamente a partir de ~125 ns, com desengajamento do Asp262/S1 seguido de migração completa de BEN ao solvente. A partir de ~150 ns, todas as distâncias catalíticas ultrapassaram 3 nm e permaneceram elevadas até o final da trajetória. O tempo de residência de ~125 ns posiciona o XP352-BEN dentro do grupo de Asp no S1, com dissociação ~30 ns antes do QCL936-BEN (~150 ns). Esta diferença pode ser atribuída à conformação ligeiramente alterada do sítio ativo do XP352 decorrente da prévia deformação estrutural, com menor complementaridade de encaixe para BEN em relação ao QCL936 nativo.
+A dissociação do complexo XP352-BEN ocorreu progressivamente a partir de ~125 ns (Figura 5C), com desengajamento do Asp262/S1 seguido de migração completa de BEN ao solvente. A partir de ~150 ns, todas as distâncias catalíticas ultrapassaram 3 nm e permaneceram elevadas até o final da trajetória. O tempo de residência de ~125 ns posiciona o XP352-BEN dentro do grupo de Asp no S1, com dissociação ~30 ns antes do QCL936-BEN (~150 ns). Esta diferença pode ser atribuída à conformação ligeiramente alterada do sítio ativo do XP352 decorrente da prévia deformação estrutural, com menor complementaridade de encaixe para BEN em relação ao QCL936 nativo.
 
 A SASA da BEN manteve-se em 2,784 ± 0,140 nm². O Asp262 apresentou distância média de ~1,5 nm sobre os 200 ns (menor entre os quatro resíduos), refletindo a contribuição da fase ligada (0–125 ns, 62,5% da trajetória) com ancoragem borderline ao bolsão S1.
 
@@ -450,7 +462,11 @@ A correlação entre docking e DM é parcialmente validada: os escores Vina elev
 
 ### 3.5 Fingerprints de interação molecular — ProLIF
 
-A análise de fingerprints ProLIF foi realizada sobre os sete sistemas estáveis para quantificação temporal e tipificação atômica das interações. Os resultados fornecem resolução par-a-par (resíduo ligante × resíduo receptor × tipo de interação), complementando e refinando os mecanismos estabelecidos pelas distâncias mínimas (§3.1–3.2).
+[[FIG_6]]
+
+[[FIG_7]]
+
+A análise de fingerprints ProLIF foi realizada sobre os sete sistemas estáveis para quantificação temporal e tipificação atômica das interações (Figura 7). Os resultados fornecem resolução par-a-par (resíduo ligante × resíduo receptor × tipo de interação), complementando e refinando os mecanismos estabelecidos pelas distâncias mínimas (§3.1–3.2).
 
 #### 3.5.1 Série GORE4
 
@@ -513,6 +529,33 @@ A análise ProLIF refina e em um caso corrige os mecanismos de inibição estabe
 4. **Hierarquia ProLIF confirma hierarquia estrutural**: As persistências máximas de interação por sistema seguem a hierarquia ACR157-SKTI (100%) ≥ QCL936-SKTI (100%) > XP273-SKTI (94%) para o SKTI, e QCL936-GORE4 (100%) > ACR157-GORE4 (55%) > XP273-GORE4 (28%) para o GORE4 — consistente com a hierarquia estabelecida por contatos, H-bonds e escores de docking HADDOCK.
 
 5. **Comparação com literatura**: A persistência de 100% para P1=Arg↔S1 no ACR157-SKTI está em plena consonância com simulações de complexos Kunitz canônicos (Krowarsch *et al.*, 2003; Laskowski & Kato, 1980), nas quais o P1=Lys/Arg permanece em contato íntimo ininterrupto com o resíduo do S1 durante toda a trajetória. A detecção de interações catiônicas dominating o fingerprint é esperada para interfaces enriquecidas em Arg/Lys — conforme Bouysset & Fiorucci (2021) observaram que interações catiônicas e cátion-π são os tipos de maior persistência em complexos protease–inibidor.
+
+---
+
+---
+
+## Legendas das Figuras
+
+**Figura 1 — Parâmetros dinâmicos dos complexos peptídeo GORE4 × tripsinas de *Spodoptera* (100 ns, 300 K, pH 8,2).**
+Painéis organizados da maior para a menor estabilidade. Para cada sistema são exibidos: RMSD do backbone do receptor (azul), RMSD do ligante (laranja), número de contatos interatômicos a < 0,4 nm (verde) e pontes de hidrogênio receptor–ligante (roxo), com médias móveis de 5 ns. (A) QCL936-GORE4: RMSD backbone = 0,124 ± 0,017 nm, estabilizado após 20 ns; contatos = 340 ± 41. (B) ACR157-GORE4: RMSD ligante = 0,393 ± 0,068 nm com reorganização da interface nos primeiros 30 ns. (C) XP273-GORE4: raio de giro bimodal (30–60 ns), RMSD ligante = 0,317 nm; SASA ligante mínima (8,14 nm²). (D) XP352-GORE4 (controle instável): RMSD backbone = 0,886 ± 0,440 nm sem platô; contatos colapsados (63 ± 143). Linha tracejada em (D): limiar de estabilidade adotado (RMSD < 0,4 nm).
+
+**Figura 2 — Distâncias mínimas (nm) entre o peptídeo GORE4 e os quatro resíduos do sítio catalítico ao longo de 100 ns.**
+Cores: triad_1 = His/Tyr/Arg (azul); triad_2 = Asp catalítico (vermelho); triad_3 = Ser nucleofílica (verde); triad_4 = resíduo do bolsão S1 (roxo). Linha tracejada horizontal: limiar de contato direto (0,5 nm). Médias móveis de 5 ns. (A) QCL936-GORE4 (modo His+S1): triad_1 His92 = 0,242 nm, triad_4 Asp241 = 0,227 nm abaixo do limiar; triad_2/3 distantes. (B) ACR157-GORE4 (modo His+S1 parcial): triad_1 His69 borderline (<0,5 nm); triad_4 Ile205 ~0,45 nm. (C) XP273-GORE4 (modo periférico): apenas triad_1 Tyr83 abaixo de 0,5 nm; S1 distante. (D) XP352-GORE4 (dissociação): todos os resíduos > 1,0 nm ao longo de toda a trajetória.
+
+**Figura 3 — Parâmetros dinâmicos dos complexos SKTI × tripsinas de *Spodoptera* (100 ns, 300 K, pH 8,2).**
+Mesma organização de painéis que a Figura 1. (A) ACR157-SKTI: RMSD ligante = 0,206 ± 0,017 nm (menor de todo o estudo); contatos = 1019 ± 118; H-bonds = 13,524 ± 2,911 — interface máxima observada. SASA ligante ≈ 101,97 nm². (B) QCL936-SKTI: RMSD backbone = 0,370 ± 0,054 nm (maior mobilidade receptora com SKTI); contatos = 720 ± 77; H-bonds = 10,410 ± 2,022. (C) XP273-SKTI: interface menor entre os SKTI (596 ± 88 contatos; 8,82 ± 3,50 H-bonds), porém muito superior ao peptídeo GORE4 no mesmo receptor (260 ± 60). Notar diferença de escala na SASA do ligante: SKTI (177 resíduos) ≈ 101–103 nm²; GORE4 (5 aa) ≈ 8–10 nm².
+
+**Figura 4 — Distâncias mínimas (nm) entre SKTI e os quatro resíduos do sítio catalítico ao longo de 100 ns.**
+Mesma nomenclatura de cores e limiar da Figura 2. (A) ACR157-SKTI (Kunitz canônico, 4/4): His69 = 0,224 nm, Asp114 = 0,312 nm, Ser211 = 0,221 nm, Ile205/S1 = 0,180 nm — todos abaixo de 0,35 nm durante toda a trajetória. Mecanismo Kunitz completo confirmado. (B) QCL936-SKTI (modo His+Ser+S1, 3/4): His92 = 0,179 nm, Ser247 = 0,176 nm, Asp241 = 0,178 nm abaixo do limiar; Asp142 = ~0,73 nm, distante. (C) XP273-SKTI (modo Tyr+Asp+S1, 3/4): Tyr83 = 0,098 nm, Asp132 = 0,119 nm, Ile229/S1 = 0,118 nm engajados; Ser234 = 0,718 nm — serina nucleofílica livre.
+
+**Figura 5 — Dissociação da benzamidina (BEN) em quatro isoformas de tripsina de *Spodoptera* (200 ns).**
+Painéis ordenados por tempo crescente de residência. Perfis mostrados: contatos totais a < 0,4 nm (verde) e distâncias ao resíduo do bolsão S1 de cada receptor (azul). Linha tracejada vertical: instante de dissociação (contatos → 0). (A) XP273-BEN (S1=Ile229, neutro): dissociação a ~80 ns; sem âncora eletrostática durante toda a fase ligada. (B) ACR157-BEN (S1=Ile205, neutro): dissociação a ~95 ns; Ile205 borderline apenas (~0,3–0,4 nm) nos primeiros 80 ns. (C) XP352-BEN (S1=Asp262, −1): ancoragem Asp262 borderline 0–125 ns; dissociação a ~125 ns. (D) QCL936-BEN (S1=Asp241, −1): fase ligada robusta (110–120 contatos, 0–150 ns) com His92, Ser247 e Asp241 em contato; dissociação a ~150 ns. O Asp carregado no S1 prolonga a residência ~58% em relação ao Ile neutro (150 vs ~87 ns médio).
+
+**Figura 6 — Mapas de frequência de contato resíduo×resíduo (distância < 0,4 nm) para os seis complexos estáveis.**
+*Heatmaps* calculados com MDAnalysis 2.10, stride 10 (1 ns/frame), agrupamento hierárquico Ward (Seaborn *clustermap*). Intensidade de cor: fração de frames com ao menos um par atômico inter-residual a < 0,4 nm. Eixo *x*: resíduos do ligante; eixo *y*: resíduos do receptor. (A–C) Série GORE4: QCL936 (padrão concentrado na região S1/Asp241), ACR157 (interface distribuída na alça S1), XP273 (contatos na região periférica Tyr83). (D–F) Série SKTI: ACR157 (cobertura extensa de alta frequência, múltiplas alças), QCL936 (dois focos: alça SPYRIRF × S1 e região periférica), XP273 (interface bipartite Tyr83/Asp132 e alça S1). A diferença de extensão dos mapas (GORE4 × SKTI) é proporcional ao tamanho relativo dos ligantes (5 vs 177 resíduos).
+
+**Figura 7 — Fingerprints de interação molecular ProLIF: persistência temporal de cada par resíduo(ligante)–resíduo(receptor)–tipo de interação (% de frames satisfazendo o critério geométrico).**
+ProLIF 2.x (Bouysset & Fiorucci, 2021) integrado ao MDAnalysis 2.10; raio de corte 0,4 nm; stride 10 (1 ns/frame). Tipos de interação codificados por cor: HBDonor/HBAcceptor (ligações de hidrogênio, azul/ciano), Catiônica (vermelho), VdWContact (cinza), Hydrophobic (verde). (A–C) Série GORE4: QCL936 — LYS303-ALA242 Catiônica 100% (âncora iônica LYS→S1 ácido); ACR157 — ALA256-GLY228 VdW/HBDonor ~52–55% (backbone); XP273 — LEU280-TYR89 28% e LEU280-HID86 17–21% (His catalítica). (D–F) Série SKTI: ACR157 — ARG317-GLN206 Catiônica 100% (P1=Arg↔S1 integral); QCL936 — ARG361-GLY266 e ARG361-ALA242 100% (arquitetura bipartite); XP273 — ARG342-ILE67 94% + ARG344-HID86 58% (His catalítica detectada por ProLIF — novo achado). BEN excluída por limitação RDKit/GAFF2 (lig.ndx sem H).
 
 ---
 
