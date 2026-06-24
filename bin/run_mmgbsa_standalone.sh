@@ -219,17 +219,25 @@ for i, a in enumerate(args):
         modified = content
         fixes    = 0
 
+        # Pré-computa LIG PDB range — necessário para Fix 0 e Fix 4 antes do Fix 2
+        _lig_pdb = None
+        for _fn in ('_GMXMMPBSA_LIG.pdb', '_GMXMMPBSA_ligand.pdb'):
+            _c = os.path.join(work_dir, _fn)
+            if os.path.exists(_c):
+                _lig_pdb = _c; break
+        _lig_min, _lig_max = pdb_res_range(_lig_pdb) if _lig_pdb else (0, 0)
+
         # ── Fix 0: LIG proteico (SKTI, 177 aa) — garantir ff14SB carregado ────
         # gmx_MMPBSA 1.6.x gera leap.in com ff19SB apenas para o receptor.
         # Quando LIG é uma proteína Kunitz (>50 resíduos), também precisa de ff14SB
         # para parâmetros de ligação. Sem ele, tleap usa parâmetros incompletos.
-        if lig_max > 0 and (lig_max - lig_min) > 50:
+        if _lig_max > 0 and (_lig_max - _lig_min) > 50:
             if ('leaprc.protein.ff14SB' not in modified and
                     'leaprc.protein.ff19SB' not in modified):
                 modified = 'source leaprc.protein.ff14SB\n' + modified
                 fixes += 1
                 wlog("[tleap-wrapper] FIX-FF14SB: adicionado leaprc.protein.ff14SB para LIG proteico "
-                     f"({lig_max - lig_min + 1} resíduos)")
+                     f"({_lig_max - _lig_min + 1} resíduos)")
 
         # ── Fix 3: GAFF → GAFF2 (atom types EN3, n3, etc.) ─────────────────
         # leaprc.gaff usa GAFF1; ACPYPE/GAFF2 gera atom types incompatíveis.
@@ -283,6 +291,84 @@ for i, a in enumerate(args):
                 else:
                     # Fora do range — log de aviso; não modificar sem saber o offset
                     wlog(f"[tleap-wrapper] AVISO: LIG bond {lb0}-{lb1} fora de [{lig_min},{lig_max}] — não modificado (verificar manualmente)")
+
+        # ── Fix 4: loadMol2 faltando para ligante não-proteico (BEN/GAFF2) ────
+        # gmx_MMPBSA 1.6.x não gera _GMXMMPBSA_LIG_ante.mol2 para GAFF2.
+        # Sem mol2, tleap cria EN2 sem atom types → FATAL.
+        # Fix: achar mol2 ACPYPE na árvore; fallback: antechamber -at gaff2.
+        _has_load_mol2 = 'loadMol2' in modified or 'loadmol2' in modified.lower()
+        _is_small_mol  = _lig_pdb is not None and (_lig_max - _lig_min) < 5
+
+        if _is_small_mol and not _has_load_mol2:
+            import shutil
+            _lig_mol2   = os.path.join(work_dir, '_GMXMMPBSA_LIG_ante.mol2')
+            _lig_frcmod = os.path.join(work_dir, '_GMXMMPBSA_LIG.frcmod')
+            wlog("[tleap-wrapper] FIX-MOL2: ligante pequeno sem loadMol2 detectado")
+
+            # 1. Busca mol2 ACPYPE na árvore (simulation_dir = parent de mmgbsa/)
+            if not os.path.exists(_lig_mol2):
+                _sim_dir = os.path.dirname(work_dir)
+                for _root, _dirs, _files in os.walk(_sim_dir):
+                    if 'mmgbsa' in _root:
+                        continue
+                    for _f in _files:
+                        if _f.endswith('.mol2'):
+                            _src = os.path.join(_root, _f)
+                            shutil.copy(_src, _lig_mol2)
+                            wlog(f"[tleap-wrapper] FIX-MOL2: mol2 ACPYPE copiado: {_src}")
+                            _src_frc = _src.replace('.mol2', '.frcmod')
+                            if os.path.exists(_src_frc) and not os.path.exists(_lig_frcmod):
+                                shutil.copy(_src_frc, _lig_frcmod)
+                                wlog("[tleap-wrapper] FIX-MOL2: frcmod ACPYPE copiado")
+                            break
+                    if os.path.exists(_lig_mol2):
+                        break
+
+            # 2. Fallback: antechamber GAFF2 (tenta nc=1 para BEN protonado, depois nc=0)
+            if not os.path.exists(_lig_mol2):
+                wlog("[tleap-wrapper] FIX-MOL2: mol2 ACPYPE não encontrado → tentando antechamber")
+                for _nc in ('1', '0'):
+                    _ret = subprocess.run(
+                        ['antechamber', '-fi', 'pdb', '-fo', 'mol2',
+                         '-i', os.path.basename(_lig_pdb),
+                         '-o', '_GMXMMPBSA_LIG_ante.mol2',
+                         '-at', 'gaff2', '-c', 'bcc', '-nc', _nc, '-an', 'n', '-s', '2'],
+                        capture_output=True, cwd=work_dir
+                    )
+                    if _ret.returncode == 0 and os.path.exists(_lig_mol2):
+                        wlog(f"[tleap-wrapper] FIX-MOL2: antechamber OK (nc={_nc})")
+                        subprocess.run(
+                            ['parmchk2', '-i', '_GMXMMPBSA_LIG_ante.mol2',
+                             '-f', 'mol2', '-o', '_GMXMMPBSA_LIG.frcmod', '-s', 'gaff2'],
+                            capture_output=True, cwd=work_dir
+                        )
+                        break
+                    wlog(f"[tleap-wrapper] FIX-MOL2: antechamber nc={_nc} falhou "
+                         f"(rc={_ret.returncode}): {_ret.stderr.decode()[:120]}")
+
+            # 3. Injeta loadAmberParams + loadMol2 no topo do leap.in
+            if os.path.exists(_lig_mol2):
+                _lig_res = 'LIG'
+                try:
+                    with open(_lig_pdb) as _pf:
+                        for _pl in _pf:
+                            if _pl.startswith(('ATOM', 'HETATM')):
+                                _lig_res = _pl[17:20].strip()
+                                break
+                except Exception:
+                    pass
+                _inject = ''
+                # Garante leaprc.gaff2 se ainda não presente
+                if 'leaprc.gaff' not in modified:
+                    _inject += 'source leaprc.gaff2\n'
+                if os.path.exists(_lig_frcmod):
+                    _inject += 'loadAmberParams _GMXMMPBSA_LIG.frcmod\n'
+                _inject += f'{_lig_res} = loadMol2 _GMXMMPBSA_LIG_ante.mol2\n'
+                modified = _inject + modified
+                fixes += 1
+                wlog(f"[tleap-wrapper] FIX-MOL2: injetado loadMol2 para residue '{_lig_res}'")
+            else:
+                wlog("[tleap-wrapper] FIX-MOL2: FALHOU — mol2 não obtido; tleap vai falhar")
 
         if fixes > 0:
             open(fpath, 'w').write(modified)
