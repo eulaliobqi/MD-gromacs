@@ -239,6 +239,13 @@ for i, a in enumerate(args):
                 fixes += 1
                 wlog("[tleap-wrapper] FIX-FF14SB: adicionado leaprc.protein.ff14SB para LIG proteico "
                      f"({_lig_max - _lig_min + 1} resíduos)")
+            # leaprc.gaff/gaff2 carrega parm99.dat; leaprc.protein.ff14SB carrega parm10.dat.
+            # Para complexo proteína-proteína não é necessário GAFF — remover para evitar conflito.
+            for _gaff_line in ('source leaprc.gaff2\n', 'source leaprc.gaff\n'):
+                if _gaff_line in modified:
+                    modified = modified.replace(_gaff_line, '')
+                    fixes += 1
+                    wlog(f"[tleap-wrapper] FIX-PROT-LIG: removido '{_gaff_line.strip()}' (conflito parm99/parm10)")
 
         # ── Fix 3: GAFF → GAFF2 (atom types EN3, n3, etc.) ─────────────────
         # leaprc.gaff usa GAFF1; ACPYPE/GAFF2 gera atom types incompatíveis.
