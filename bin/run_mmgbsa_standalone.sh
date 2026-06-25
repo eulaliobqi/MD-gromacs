@@ -226,12 +226,13 @@ for i, a in enumerate(args):
             if os.path.exists(_c):
                 _lig_pdb = _c; break
         _lig_min, _lig_max = pdb_res_range(_lig_pdb) if _lig_pdb else (0, 0)
+        _is_protein_lig = _lig_max > 0 and (_lig_max - _lig_min) > 50
 
         # ── Fix 0: LIG proteico (SKTI, 177 aa) — garantir ff14SB carregado ────
         # gmx_MMPBSA 1.6.x gera leap.in com ff19SB apenas para o receptor.
         # Quando LIG é uma proteína Kunitz (>50 resíduos), também precisa de ff14SB
         # para parâmetros de ligação. Sem ele, tleap usa parâmetros incompletos.
-        if _lig_max > 0 and (_lig_max - _lig_min) > 50:
+        if _is_protein_lig:
             if ('leaprc.protein.ff14SB' not in modified and
                     'leaprc.protein.ff19SB' not in modified):
                 modified = 'source leaprc.protein.ff14SB\n' + modified
@@ -241,12 +242,15 @@ for i, a in enumerate(args):
 
         # ── Fix 3: GAFF → GAFF2 (atom types EN3, n3, etc.) ─────────────────
         # leaprc.gaff usa GAFF1; ACPYPE/GAFF2 gera atom types incompatíveis.
-        if 'leaprc.gaff\n' in modified or 'leaprc.gaff"' in modified or "source leaprc.gaff\n" in modified:
-            before = modified
-            modified = re.sub(r'\bleaprc\.gaff\b(?!2)', 'leaprc.gaff2', modified)
-            if modified != before:
-                fixes += 1
-                wlog("[tleap-wrapper] FIX-GAFF2: leaprc.gaff → leaprc.gaff2")
+        # Ignorar para ligantes proteicos: leaprc.gaff2 nesta instalação AMBER carrega
+        # parm99.dat, conflitando com parm10.dat de leaprc.protein.ff14SB (Fix 0).
+        if not _is_protein_lig:
+            if 'leaprc.gaff\n' in modified or 'leaprc.gaff"' in modified or "source leaprc.gaff\n" in modified:
+                before = modified
+                modified = re.sub(r'\bleaprc\.gaff\b(?!2)', 'leaprc.gaff2', modified)
+                if modified != before:
+                    fixes += 1
+                    wlog("[tleap-wrapper] FIX-GAFF2: leaprc.gaff → leaprc.gaff2")
 
         # ── Extrai bonds do leap.in (já possivelmente modificado) ───────────
         rec_bonds = re.findall(r'bond\s+REC_OUT\.(\d+)\.SG\s+REC_OUT\.(\d+)\.SG', modified)
