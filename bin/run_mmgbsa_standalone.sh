@@ -401,13 +401,22 @@ echo "[OK] bin_patch/tleap criado"
 
 # ── Executa gmx_MMPBSA no ambiente isolado ────────────────────────────────────
 CURRENT_DIR="$PWD"
+
+# gmx_mpi está no env md-gromacs. Quando rodamos mamba run -n mmgbsa-env,
+# o env muda e o gmx_mpi some do PATH. Detectamos o diretório aqui (fora do
+# mamba run, onde o PATH ainda pode ter o md-gromacs ou conda info funciona).
+MINIFORGE=$(conda info --base 2>/dev/null || echo "/home/eulalio/miniforge3")
+GMX_MPI_DIR=$(find "${MINIFORGE}/envs/md-gromacs" -name "gmx_mpi" 2>/dev/null \
+    | head -1 | xargs -r dirname || echo "")
+echo "[OK] gmx_mpi dir: ${GMX_MPI_DIR:-NÃO ENCONTRADO — gmx_MMPBSA pode falhar}"
+
 echo ""
 echo "[MMGBSA] Iniciando gmx_MMPBSA (pode demorar 20-60 min)..."
 echo "[MMGBSA] Saídas em: $CURRENT_DIR"
 echo ""
 
 mamba run -n mmgbsa-env bash -c "
-export PATH=${CURRENT_DIR}/bin_patch:\$PATH
+export PATH=${CURRENT_DIR}/bin_patch:${GMX_MPI_DIR}:\$PATH
 echo '[mmgbsa-env] PATH patch ativo'
 
 gmx_MMPBSA -O \\
