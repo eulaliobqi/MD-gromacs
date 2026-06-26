@@ -15,8 +15,17 @@ Uso:
   mamba run -n prodigy-env python bin/run_prodigy.py
 """
 
-import os, csv, tempfile, subprocess, statistics
+import os, sys, csv, tempfile, subprocess, statistics
 import MDAnalysis as mda
+
+# ── Verificar PRODIGY instalado ───────────────────────────────────────────────
+try:
+    import prodigy as _prodigy_mod  # noqa: F401
+    PRODIGY_CMD = [sys.executable, "-m", "prodigy"]
+except ImportError:
+    print("[ERRO] prodigy não encontrado. Instale com:")
+    print("       pip install prodigy")
+    sys.exit(1)
 
 # ── Sistemas MD disponíveis ────────────────────────────────────────────────────
 SISTEMAS = [
@@ -115,12 +124,12 @@ def build_complex_pdb(gro, xtc, ndx, frame_idx, outpdb):
 
 def run_prodigy(pdb_path):
     """
-    Chama PRODIGY e extrai ΔG (kcal/mol) e Kd.
+    Chama PRODIGY via 'python -m prodigy' e extrai ΔG (kcal/mol) e Kd.
     Retorna (dg_float, kd_str) ou (None, None) em caso de erro.
     """
     try:
         result = subprocess.run(
-            ["prodigy", "--quiet", pdb_path],
+            PRODIGY_CMD + ["--quiet", pdb_path],
             capture_output=True, text=True, timeout=30
         )
         output = result.stdout + result.stderr
@@ -150,6 +159,28 @@ def main():
     print("=" * 60)
     print("PRODIGY — Predição de ΔG de ligação")
     print("=" * 60)
+
+    # ── Pré-check: listar arquivos disponíveis ────────────────────────────────
+    print("\n[PRÉ-CHECK] Verificando arquivos de entrada:")
+    todos_ok = True
+    for label, prod_dir, ndx in SISTEMAS:
+        gro = os.path.join(prod_dir, "md.gro")
+        xtc = os.path.join(prod_dir, "md_fit.xtc")
+        ok_gro = os.path.exists(gro)
+        ok_xtc = os.path.exists(xtc)
+        ok_ndx = os.path.exists(ndx)
+        status = "OK" if (ok_gro and ok_xtc and ok_ndx) else "PROBLEMA"
+        if status == "PROBLEMA":
+            todos_ok = False
+        miss = []
+        if not ok_gro: miss.append("md.gro")
+        if not ok_xtc: miss.append("md_fit.xtc")
+        if not ok_ndx: miss.append("lig.ndx")
+        miss_str = f"  [FALTAM: {', '.join(miss)}]" if miss else ""
+        print(f"  {label:<20} {status}{miss_str}")
+    if not todos_ok:
+        print("\n[AVISO] Alguns sistemas têm arquivos ausentes — serão pulados.")
+    print()
 
     with tempfile.TemporaryDirectory() as tmpdir:
         for label, prod_dir, ndx in SISTEMAS:
