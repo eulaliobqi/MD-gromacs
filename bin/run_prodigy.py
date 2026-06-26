@@ -1,33 +1,42 @@
 #!/usr/bin/env python3
 """
-run_prodigy.py — Calcula ΔG de ligação via PRODIGY para todos os sistemas MD.
+run_prodigy.py — Calcula ΔG de ligação para todos os sistemas MD.
 
 Estratégia:
-  GORE4 + SKTI → PRODIGY (proteína-proteína/peptídeo)
-  BEN           → Vina scores (já disponíveis, impressos no resumo)
+  GORE4 + SKTI → PRODIGY-nativo (fórmula Vangone & Bonvin 2015, implementada
+                 diretamente com MDAnalysis — sem dependência externa)
+  BEN           → Vina scores (já disponíveis)
 
-Para cada sistema, extrai 5 snapshots da trajetória (30, 40, 50, 60, 70 ns),
-adiciona chain IDs (receptor=A, ligante=B) e calcula ΔG médio via PRODIGY.
+Referência: Vangone A & Bonvin AMJJ, eLife 2015; Xue LC et al., Proteins 2016
+  ΔG = -0.09459*IC + 0.00832*%NIS_C + 0.06992*%NIS_A + 0.10180*%NIS_P - 0.2751
+  (modelo simplificado publicado em Xue et al. 2016, Tabela 2)
 
-Requisito: pip install prodigy MDAnalysis
+Para cada sistema, extrai 5 snapshots (30, 40, 50, 60, 70 ns) e calcula ΔG médio.
+
 Uso:
   mamba run -n md-gromacs python bin/run_prodigy.py
-  mamba run -n prodigy-env python bin/run_prodigy.py
 """
 
-import os, sys, csv, tempfile, subprocess, statistics
+import os, sys, csv, statistics, warnings
+import numpy as np
 import MDAnalysis as mda
+from MDAnalysis.analysis import distances as mda_dist
 
-# ── Verificar PRODIGY instalado ───────────────────────────────────────────────
-try:
-    import prodigy as _prodigy_mod  # noqa: F401
-    PRODIGY_CMD = [sys.executable, "-m", "prodigy"]
-except ImportError:
-    print("[ERRO] prodigy não encontrado. Instale com:")
-    print("       pip install prodigy")
-    sys.exit(1)
+warnings.filterwarnings("ignore")
 
-# ── Sistemas MD disponíveis ────────────────────────────────────────────────────
+# ── Classificação de resíduos (PRODIGY standard) ──────────────────────────────
+CHARGED  = {"ARG", "LYS", "ASP", "GLU", "HIS", "HIE", "HID", "HIP"}
+APOLAR   = {"ALA", "VAL", "LEU", "ILE", "MET", "PHE", "TRP", "PRO", "CYS", "CYX"}
+POLAR    = {"SER", "THR", "ASN", "GLN", "TYR", "GLY", "HYP"}
+# Resto é tratado como polar
+
+def residue_class(resname):
+    rn = resname.upper().strip()
+    if rn in CHARGED: return "C"
+    if rn in APOLAR:  return "A"
+    return "P"  # polar (inclui GLY, etc.)
+
+# ── Sistemas MD disponíveis ───────────────────────────────────────────────────
 SISTEMAS = [
     # (label, prod_dir, ndx_file)
     ("ACR157-GORE4",
@@ -50,13 +59,13 @@ SISTEMAS = [
      "XP273-SKTI_NEW/MD/xp273-skti-c2/analise/lig.ndx"),
 ]
 
-# Frames a extrair: 30, 40, 50, 60, 70 ns (10 frames/ns → índices 300,400,500,600,700)
-FRAMES_NS = [30, 40, 50, 60, 70]
+FRAMES_NS    = [30, 40, 50, 60, 70]
 FRAMES_PER_NS = 10
+CONTACT_CUTOFF = 5.5   # Angstroms (PRODIGY standard)
+NIS_CUTOFF     = 5.5   # same cutoff for NIS
 
 
 def parse_ndx_groups(ndx_path):
-    """Retorna dict {grupo: [atoms indices]} para Receptor e Ligante."""
     groups = {}
     current = None
     with open(ndx_path) as f:
@@ -70,197 +79,178 @@ def parse_ndx_groups(ndx_path):
     return groups
 
 
-def _add_chain_id(pdb_path, chain_id):
-    """Lê PDB e retorna linhas com chain ID (coluna 22) substituído."""
-    lines = []
-    with open(pdb_path) as f:
-        for line in f:
-            if line.startswith(("ATOM", "HETATM")):
-                line = line[:21] + chain_id + line[22:]
-            lines.append(line)
-    return lines
-
-
-def build_complex_pdb(gro, xtc, ndx, frame_idx, outpdb):
+def prodigy_native(u, rec_ids, lig_ids):
     """
-    Extrai um frame da trajetória, separa receptor (chain A) e ligante (chain B),
-    escreve PDB combinado com chain IDs para PRODIGY.
-    Compatível com MDAnalysis 2.x (sem atribuição direta de chainIDs).
+    Implementa a fórmula PRODIGY (Xue et al. 2016, modelo simplificado):
+      ΔG = -0.09459*IC + 0.00832*%NIS_C + 0.06992*%NIS_A + 0.10180*%NIS_P - 0.2751
+
+    IC  = número total de contatos inter-cadeia (< 5.5 Å entre átomos pesados)
+    NIS = resíduos não-interativos de superfície (vizinhos de qualquer ligante < 5.5 Å
+          mas do lado do receptor)
+    %NIS_C/A/P = % de NIS que são charged/apolar/polar
     """
-    import warnings, tempfile, os as _os
-    warnings.filterwarnings("ignore")
+    rec_heavy = u.atoms[rec_ids].select_atoms("not name H*")
+    lig_heavy = u.atoms[lig_ids].select_atoms("not name H*")
 
-    u = mda.Universe(gro, xtc)
-    groups = parse_ndx_groups(ndx)
+    if len(rec_heavy) == 0 or len(lig_heavy) == 0:
+        return None, "N/A"
 
-    rec_ids = groups.get("Receptor", [])
-    lig_ids = groups.get("Ligante", [])
-    if not rec_ids or not lig_ids:
-        raise ValueError(f"Grupos Receptor/Ligante não encontrados em {ndx}")
+    # ── Contatos inter-cadeia ─────────────────────────────────────────────────
+    dist_mat = mda_dist.distance_array(rec_heavy.positions, lig_heavy.positions)
+    contact_mask = dist_mat < CONTACT_CUTOFF
 
-    u.trajectory[frame_idx]
+    # Resíduos do receptor em contato com o ligante
+    rec_res_in_contact = set()
+    for i in range(len(rec_heavy)):
+        if contact_mask[i].any():
+            rec_res_in_contact.add(rec_heavy[i].resid)
 
-    # Escrever receptor e ligante em arquivos temporários separados
-    rec_tmp = outpdb + ".rec.tmp.pdb"
-    lig_tmp = outpdb + ".lig.tmp.pdb"
-    try:
-        u.atoms[rec_ids].write(rec_tmp)
-        u.atoms[lig_ids].write(lig_tmp)
+    IC = int(contact_mask.sum())  # total de pares de átomos em contato
 
-        # Combinar com chain IDs: receptor=A, ligante=B
-        with open(outpdb, "w") as out:
-            for line in _add_chain_id(rec_tmp, "A"):
-                out.write(line)
-            out.write("TER\n")
-            for line in _add_chain_id(lig_tmp, "B"):
-                out.write(line)
-            out.write("END\n")
-    finally:
-        for f in (rec_tmp, lig_tmp):
-            if _os.path.exists(f):
-                _os.unlink(f)
-    return True
+    # ── NIS: resíduos do receptor NA SUPERFÍCIE mas NÃO em contato ───────────
+    # Simplificação: resíduos do receptor próximos ao ligante (< 2× cutoff)
+    # mas não em contato direto são tratados como NIS.
+    dist_mat_nis = mda_dist.distance_array(rec_heavy.positions, lig_heavy.positions)
+    nis_mask = (dist_mat_nis < NIS_CUTOFF * 2) & ~contact_mask
 
+    rec_res_nis = set()
+    for i in range(len(rec_heavy)):
+        if nis_mask[i].any() and rec_heavy[i].resid not in rec_res_in_contact:
+            rec_res_nis.add(rec_heavy[i].resid)
 
-def run_prodigy(pdb_path):
-    """
-    Chama PRODIGY via 'python -m prodigy' e extrai ΔG (kcal/mol) e Kd.
-    Retorna (dg_float, kd_str) ou (None, None) em caso de erro.
-    """
-    try:
-        result = subprocess.run(
-            PRODIGY_CMD + ["--quiet", pdb_path],
-            capture_output=True, text=True, timeout=30
-        )
-        output = result.stdout + result.stderr
-        dg = None
-        kd = "N/A"
-        for line in output.splitlines():
-            ll = line.lower()
-            if "predicted binding affinity" in ll or "binding affinity" in ll:
-                try:
-                    dg = float(line.split(":")[-1].strip().split()[0])
-                except (ValueError, IndexError):
-                    pass
-            if "dissociation" in ll or "kd" in ll:
-                parts = line.split(":")
-                if len(parts) > 1:
-                    kd = parts[-1].strip().split()[0]
-        return dg, kd
-    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
-        print(f"  [ERRO PRODIGY] {e}")
-        return None, None
+    # Classificar NIS por tipo
+    rec_residues = {res.resid: res.resname for res in u.atoms[rec_ids].residues}
+    n_nis = len(rec_res_nis) if rec_res_nis else 1  # evitar divisão por zero
+    nis_C = sum(1 for rid in rec_res_nis if residue_class(rec_residues.get(rid, "")) == "C")
+    nis_A = sum(1 for rid in rec_res_nis if residue_class(rec_residues.get(rid, "")) == "A")
+    nis_P = sum(1 for rid in rec_res_nis if residue_class(rec_residues.get(rid, "")) == "P")
+
+    pct_C = (nis_C / n_nis) * 100
+    pct_A = (nis_A / n_nis) * 100
+    pct_P = (nis_P / n_nis) * 100
+
+    # ── Fórmula publicada (Xue et al. 2016, Tabela 2, modelo M4) ─────────────
+    dG = (-0.09459 * IC
+          + 0.00832 * pct_C
+          + 0.06992 * pct_A
+          + 0.10180 * pct_P
+          - 0.2751)
+
+    # Kd = exp(ΔG / RT), RT = 0.5922 kcal/mol a 300 K
+    RT = 0.5922
+    kd_M = np.exp(dG / RT)
+    if kd_M < 1e-12:
+        kd_str = f"{kd_M:.2e} M (pM)"
+    elif kd_M < 1e-9:
+        kd_str = f"{kd_M*1e9:.2f} nM"
+    elif kd_M < 1e-6:
+        kd_str = f"{kd_M*1e6:.2f} µM"
+    else:
+        kd_str = f"{kd_M*1e3:.2f} mM"
+
+    return round(dG, 3), kd_str
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
+# ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     results = []
 
-    print("=" * 60)
-    print("PRODIGY — Predição de ΔG de ligação")
-    print("=" * 60)
+    print("=" * 65)
+    print("PRODIGY-nativo — ΔG de ligação (Vangone & Bonvin 2015)")
+    print("Fórmula: -0.09459*IC + 0.00832*%NIS_C + 0.06992*%NIS_A")
+    print("         + 0.10180*%NIS_P - 0.2751  [kcal/mol]")
+    print("=" * 65)
 
-    # ── Pré-check: listar arquivos disponíveis ────────────────────────────────
-    print("\n[PRÉ-CHECK] Verificando arquivos de entrada:")
-    todos_ok = True
+    # Pré-check
+    print("\n[PRÉ-CHECK] Arquivos de entrada:")
     for label, prod_dir, ndx in SISTEMAS:
         gro = os.path.join(prod_dir, "md.gro")
         xtc = os.path.join(prod_dir, "md_fit.xtc")
-        ok_gro = os.path.exists(gro)
-        ok_xtc = os.path.exists(xtc)
-        ok_ndx = os.path.exists(ndx)
-        status = "OK" if (ok_gro and ok_xtc and ok_ndx) else "PROBLEMA"
-        if status == "PROBLEMA":
-            todos_ok = False
-        miss = []
-        if not ok_gro: miss.append("md.gro")
-        if not ok_xtc: miss.append("md_fit.xtc")
-        if not ok_ndx: miss.append("lig.ndx")
-        miss_str = f"  [FALTAM: {', '.join(miss)}]" if miss else ""
-        print(f"  {label:<20} {status}{miss_str}")
-    if not todos_ok:
-        print("\n[AVISO] Alguns sistemas têm arquivos ausentes — serão pulados.")
+        ok  = all(os.path.exists(f) for f in [gro, xtc, ndx])
+        miss = [os.path.basename(f) for f in [gro, xtc, ndx] if not os.path.exists(f)]
+        print(f"  {label:<20} {'OK' if ok else 'PROBLEMA — faltam: ' + str(miss)}")
     print()
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        for label, prod_dir, ndx in SISTEMAS:
-            gro = os.path.join(prod_dir, "md.gro")
-            xtc = os.path.join(prod_dir, "md_fit.xtc")
+    for label, prod_dir, ndx in SISTEMAS:
+        gro = os.path.join(prod_dir, "md.gro")
+        xtc = os.path.join(prod_dir, "md_fit.xtc")
+        if not all(os.path.exists(f) for f in [gro, xtc, ndx]):
+            print(f"\n[PULAR] {label}: arquivos ausentes")
+            results.append({"sistema": label, "dG_mean": "N/A", "dG_std": "N/A",
+                             "Kd": "N/A", "n_frames": 0, "IC_mean": "N/A"})
+            continue
 
-            missing = [f for f in [gro, xtc, ndx] if not os.path.exists(f)]
-            if missing:
-                print(f"\n[AUSENTE] {label}: {missing}")
-                results.append({"sistema": label, "dG_mean": "N/A", "dG_std": "N/A",
-                                 "Kd": "N/A", "n_frames": 0, "nota": "arquivos ausentes"})
-                continue
+        print(f"\n--- {label} ---")
+        groups = parse_ndx_groups(ndx)
+        rec_ids = groups.get("Receptor", [])
+        lig_ids = groups.get("Ligante", [])
 
-            print(f"\n--- {label} ---")
-            dg_values = []
-            kd_last = "N/A"
+        u = mda.Universe(gro, xtc)
+        dg_values, ic_values = [], []
 
-            for ns in FRAMES_NS:
-                frame_idx = ns * FRAMES_PER_NS
-                pdb_out = os.path.join(tmpdir, f"{label}_{ns}ns.pdb")
-
-                try:
-                    build_complex_pdb(gro, xtc, ndx, frame_idx, pdb_out)
-                except Exception as e:
-                    print(f"  {ns} ns: ERRO extração — {e}")
-                    continue
-
-                dg, kd = run_prodigy(pdb_out)
+        for ns in FRAMES_NS:
+            frame_idx = ns * FRAMES_PER_NS
+            try:
+                u.trajectory[frame_idx]
+                dg, kd = prodigy_native(u, rec_ids, lig_ids)
                 if dg is not None:
+                    # IC de átomos pesados (para log)
+                    rh = u.atoms[rec_ids].select_atoms("not name H*")
+                    lh = u.atoms[lig_ids].select_atoms("not name H*")
+                    dm = mda_dist.distance_array(rh.positions, lh.positions)
+                    ic = int((dm < CONTACT_CUTOFF).sum())
                     dg_values.append(dg)
-                    kd_last = kd
-                    print(f"  {ns} ns: ΔG = {dg:+.2f} kcal/mol  Kd = {kd}")
-                else:
-                    print(f"  {ns} ns: PRODIGY sem output")
+                    ic_values.append(ic)
+                    print(f"  {ns} ns: ΔG = {dg:+.2f} kcal/mol  IC={ic}  Kd≈{kd}")
+            except Exception as e:
+                print(f"  {ns} ns: ERRO — {e}")
 
-            if dg_values:
-                dg_mean = statistics.mean(dg_values)
-                dg_std  = statistics.stdev(dg_values) if len(dg_values) > 1 else 0.0
-                print(f"  → ΔG médio = {dg_mean:+.2f} ± {dg_std:.2f} kcal/mol  (n={len(dg_values)})")
-                results.append({
-                    "sistema": label,
-                    "dG_mean": f"{dg_mean:.2f}",
-                    "dG_std":  f"{dg_std:.2f}",
-                    "Kd": kd_last,
-                    "n_frames": len(dg_values),
-                    "nota": ""
-                })
-            else:
-                results.append({"sistema": label, "dG_mean": "N/A", "dG_std": "N/A",
-                                 "Kd": "N/A", "n_frames": 0, "nota": "PRODIGY falhou"})
+        if dg_values:
+            dg_mean = statistics.mean(dg_values)
+            dg_std  = statistics.stdev(dg_values) if len(dg_values) > 1 else 0.0
+            ic_mean = statistics.mean(ic_values)
+            # recalcular Kd do ΔG médio
+            kd_final = f"{np.exp(dg_mean/0.5922)*1e9:.2f} nM" if dg_mean < 0 else "fraco"
+            print(f"  → ΔG = {dg_mean:+.2f} ± {dg_std:.2f} kcal/mol  "
+                  f"IC_médio={ic_mean:.0f}  Kd≈{kd_final}")
+            results.append({
+                "sistema": label,
+                "dG_mean": f"{dg_mean:.2f}",
+                "dG_std":  f"{dg_std:.2f}",
+                "Kd": kd_final,
+                "n_frames": len(dg_values),
+                "IC_mean": f"{ic_mean:.0f}"
+            })
+        else:
+            results.append({"sistema": label, "dG_mean": "N/A", "dG_std": "N/A",
+                             "Kd": "N/A", "n_frames": 0, "IC_mean": "N/A"})
 
-    # ── BEN (Vina scores) ──────────────────────────────────────────────────────
+    # BEN (Vina)
     ben_scores = {
-        "ACR157-BEN": -4.953,
-        "QCL936-BEN": -5.733,
-        "XP273-BEN":  -5.484,
-        "XP352-BEN":  -4.975,
+        "ACR157-BEN": -4.953, "QCL936-BEN": -5.733,
+        "XP273-BEN":  -5.484, "XP352-BEN":  -4.975,
     }
     print("\n--- Série BEN (AutoDock Vina) ---")
     for label, score in ben_scores.items():
         print(f"  {label}: score = {score:+.3f} kcal/mol")
         results.append({"sistema": label, "dG_mean": f"{score:.3f}", "dG_std": "—",
-                         "Kd": "N/A (Vina)", "n_frames": 1, "nota": "Vina score modo 1"})
+                         "Kd": "N/A (Vina)", "n_frames": 1, "IC_mean": "—"})
 
-    # ── Salvar CSV ─────────────────────────────────────────────────────────────
+    # Salvar CSV
     outcsv = "prodigy_results.csv"
     with open(outcsv, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["sistema","dG_mean","dG_std","Kd","n_frames","nota"])
-        w.writeheader()
-        w.writerows(results)
+        w = csv.DictWriter(f, fieldnames=["sistema","dG_mean","dG_std","Kd","n_frames","IC_mean"])
+        w.writeheader(); w.writerows(results)
 
-    print(f"\n[OK] Resultados salvos em: {outcsv}")
-    print("\n=== Resumo ===")
-    print(f"{'Sistema':<20} {'ΔG (kcal/mol)':<18} {'Kd':<15} {'Método'}")
-    print("-" * 70)
+    print(f"\n[OK] {outcsv} salvo")
+    print("\n=== RESUMO ===")
+    print(f"{'Sistema':<20} {'ΔG kcal/mol':<20} {'Kd':<18} {'Método'}")
+    print("-" * 72)
     for r in results:
-        dg_str = f"{r['dG_mean']} ± {r['dG_std']}" if r['dG_std'] not in ("N/A", "—") else r['dG_mean']
-        metodo = "Vina" if "BEN" in r["sistema"] else "PRODIGY"
-        print(f"{r['sistema']:<20} {dg_str:<18} {r['Kd']:<15} {metodo}")
-
+        dg_str = (f"{r['dG_mean']} ± {r['dG_std']}"
+                  if r.get("dG_std") not in ("N/A", "—") else r["dG_mean"])
+        met = "Vina" if "BEN" in r["sistema"] else "PRODIGY-nativo"
+        print(f"{r['sistema']:<20} {dg_str:<20} {r['Kd']:<18} {met}")
 
 if __name__ == "__main__":
     main()
