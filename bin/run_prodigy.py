@@ -225,6 +225,26 @@ def main():
             results.append({"sistema": label, "dG_mean": "N/A", "dG_std": "N/A",
                              "Kd": "N/A", "n_frames": 0, "IC_mean": "N/A"})
 
+    # SKTI — substituir por ΔG experimental
+    # PRODIGY superestima SKTI (IC > 700 átomo-pares, fora do domínio de treino do modelo)
+    # IC₅₀ experimental = 0.918 nM → ΔG = RT·ln(Kd) = 0.5922·ln(0.918e-9) ≈ -12.2 kcal/mol
+    SKTI_DG_EXP  = -12.2
+    SKTI_KD_EXP  = "0.918 nM (exp.)"
+    print("\n[NOTA] Série SKTI: valores PRODIGY descartados (IC > 700, fora do domínio de treino).")
+    print(f"       Usando ΔG experimental: IC₅₀ = 0.918 nM → ΔG = {SKTI_DG_EXP} kcal/mol")
+    results_out = []
+    for r in results:
+        r2 = r.copy()
+        if "SKTI" in r["sistema"]:
+            r2["dG_mean"] = f"{SKTI_DG_EXP:.1f}"
+            r2["dG_std"]  = "exp."
+            r2["Kd"]      = SKTI_KD_EXP
+            r2["IC_mean"] = r.get("IC_mean", "—")  # manter IC do MD para referência
+            r2["metodo"]  = "IC₅₀ experimental"
+        else:
+            r2["metodo"] = "PRODIGY-nativo"
+        results_out.append(r2)
+
     # BEN (Vina)
     ben_scores = {
         "ACR157-BEN": -4.953, "QCL936-BEN": -5.733,
@@ -233,24 +253,31 @@ def main():
     print("\n--- Série BEN (AutoDock Vina) ---")
     for label, score in ben_scores.items():
         print(f"  {label}: score = {score:+.3f} kcal/mol")
-        results.append({"sistema": label, "dG_mean": f"{score:.3f}", "dG_std": "—",
-                         "Kd": "N/A (Vina)", "n_frames": 1, "IC_mean": "—"})
+        results_out.append({"sistema": label, "dG_mean": f"{score:.3f}", "dG_std": "—",
+                             "Kd": "N/A (Vina)", "n_frames": 1, "IC_mean": "—",
+                             "metodo": "Vina"})
 
     # Salvar CSV
     outcsv = "prodigy_results.csv"
+    fields = ["sistema","dG_mean","dG_std","Kd","n_frames","IC_mean","metodo"]
     with open(outcsv, "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=["sistema","dG_mean","dG_std","Kd","n_frames","IC_mean"])
-        w.writeheader(); w.writerows(results)
+        w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        w.writeheader(); w.writerows(results_out)
 
     print(f"\n[OK] {outcsv} salvo")
-    print("\n=== RESUMO ===")
-    print(f"{'Sistema':<20} {'ΔG kcal/mol':<20} {'Kd':<18} {'Método'}")
-    print("-" * 72)
-    for r in results:
-        dg_str = (f"{r['dG_mean']} ± {r['dG_std']}"
-                  if r.get("dG_std") not in ("N/A", "—") else r["dG_mean"])
-        met = "Vina" if "BEN" in r["sistema"] else "PRODIGY-nativo"
-        print(f"{r['sistema']:<20} {dg_str:<20} {r['Kd']:<18} {met}")
+    print("\n=== TABELA FINAL (para §3.6 do artigo) ===")
+    print(f"{'Sistema':<20} {'ΔG (kcal/mol)':<24} {'Kd':<24} {'Método'}")
+    print("-" * 82)
+    for r in results_out:
+        std = r.get("dG_std", "")
+        if std not in ("N/A", "—", "exp.", ""):
+            dg_str = f"{r['dG_mean']} ± {std}"
+        elif std == "exp.":
+            dg_str = f"{r['dG_mean']} (exp.)"
+        else:
+            dg_str = r["dG_mean"]
+        kd = r.get("Kd", "N/A")
+        print(f"{r['sistema']:<20} {dg_str:<24} {kd:<24} {r.get('metodo','')}")
 
 if __name__ == "__main__":
     main()
