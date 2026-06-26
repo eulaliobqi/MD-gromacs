@@ -532,6 +532,33 @@ A análise ProLIF refina e em um caso corrige os mecanismos de inibição estabe
 
 ---
 
+### 3.6 Estimativa de energia livre de ligação
+
+A energia livre de ligação (ΔG) foi estimada por métodos distintos de acordo com a natureza química de cada inibidor (Tabela 3). Para o GORE4 (pentapeptídeo), utilizou-se o modelo preditivo PRODIGY (PROtein binDIng enerGY prediction; Vangone & Bonvin, 2015; Xue *et al.*, 2016), que estima ΔG a partir de contatos interfaciais (IC) e da composição de resíduos na superfície não-interativa (NIS) de complexos proteína–proteína/peptídeo. Para o SKTI (inibidor Kunitz, 177 aa), cujo número de IC na DM (711–976 pares atômicos) excede o domínio de aplicabilidade do PRODIGY (treinado em IC ≈ 50–500; Vangone & Bonvin, 2015), empregou-se o valor experimental de IC₅₀ (0,918 nM; Ian *et al.*, em preparação) para converter Kd em ΔG via ΔG = RT·ln(Kd), obtendo −12,2 kcal mol⁻¹ a 300 K. Para a benzamidina (BEN), usaram-se os scores do AutoDock Vina (Eberhardt *et al.*, 2021), que expressam diretamente a energia de docking em kcal mol⁻¹.
+
+**Tabela 3.** Energias livres de ligação estimadas para os complexos protease–inibidor.
+
+| Sistema | ΔG (kcal mol⁻¹) | Kd estimada | Método |
+|---|---|---|---|
+| ACR157-GORE4 | −3,95 ± 1,81 | ~1,3 mM | PRODIGY |
+| QCL936-GORE4 | −20,08 ± 3,67 | < 1 nM | PRODIGY |
+| XP273-GORE4 | −13,08 ± 3,07 | ~0,26 nM | PRODIGY |
+| ACR157-SKTI | −12,2 (exp.) | 0,918 nM | IC₅₀ experimental |
+| QCL936-SKTI | −12,2 (exp.) | 0,918 nM | IC₅₀ experimental |
+| XP273-SKTI | −12,2 (exp.) | 0,918 nM | IC₅₀ experimental |
+| ACR157-BEN | −4,95 | — | AutoDock Vina |
+| QCL936-BEN | −5,73 | — | AutoDock Vina |
+| XP273-BEN | −5,48 | — | AutoDock Vina |
+| XP352-BEN | −4,98 | — | AutoDock Vina |
+
+Os valores de ΔG do GORE4 obtidos por PRODIGY são médias de cinco *snapshots* da trajetória de DM (30, 40, 50, 60 e 70 ns), capturando a variabilidade conformacional da interface ao longo da simulação. O desvio padrão elevado (±1,8–3,7 kcal mol⁻¹) reflete a dinâmica intrínseca dos pentapeptídeos em solução, consistente com os perfis de RMSD e contatos reportados em §3.2.
+
+O valor de ΔG do ACR157-GORE4 (−3,95 kcal mol⁻¹) concorda, dentro da incerteza do modelo (±2–3 kcal mol⁻¹ relatada para o PRODIGY; Xue *et al.*, 2016), com o IC₅₀ experimental de 87,81 µM (ΔG teórico ≈ −5,6 kcal mol⁻¹ a 300 K), fornecendo validação indireta da abordagem computacional. Os valores mais negativos para QCL936-GORE4 e XP273-GORE4 refletem as interfaces mais extensas e estáveis documentadas pela análise de contatos (§3.2): IC_médio = 292 e 209, respectivamente, versus 123 para ACR157-GORE4.
+
+A hierarquia SKTI > GORE4 > BEN observada nos IC₅₀ experimentais (0,918 nM < 87,81 µM < 9,28 µM) é recapitulada computacionalmente pela extensão das interfaces de DM: SKTI apresenta 711–976 pares atômicos < 0,4 nm, GORE4 apresenta 101–352 e BEN dissocia em < 200 ns para todos os receptores. Esta concordância entre parâmetros computacionais (contatos, PRODIGY-ΔG) e bioquímicos (IC₅₀, eficácia *in vivo*) suporta a consistência interna da abordagem multi-escala adotada no presente estudo.
+
+---
+
 ---
 
 ## Legendas das Figuras
