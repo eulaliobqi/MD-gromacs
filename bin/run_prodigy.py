@@ -61,12 +61,24 @@ def parse_ndx_groups(ndx_path):
     return groups
 
 
+def _add_chain_id(pdb_path, chain_id):
+    """Lê PDB e retorna linhas com chain ID (coluna 22) substituído."""
+    lines = []
+    with open(pdb_path) as f:
+        for line in f:
+            if line.startswith(("ATOM", "HETATM")):
+                line = line[:21] + chain_id + line[22:]
+            lines.append(line)
+    return lines
+
+
 def build_complex_pdb(gro, xtc, ndx, frame_idx, outpdb):
     """
     Extrai um frame da trajetória, separa receptor (chain A) e ligante (chain B),
     escreve PDB combinado com chain IDs para PRODIGY.
+    Compatível com MDAnalysis 2.x (sem atribuição direta de chainIDs).
     """
-    import warnings
+    import warnings, tempfile, os as _os
     warnings.filterwarnings("ignore")
 
     u = mda.Universe(gro, xtc)
@@ -79,15 +91,25 @@ def build_complex_pdb(gro, xtc, ndx, frame_idx, outpdb):
 
     u.trajectory[frame_idx]
 
-    rec = u.atoms[rec_ids]
-    lig = u.atoms[lig_ids]
+    # Escrever receptor e ligante em arquivos temporários separados
+    rec_tmp = outpdb + ".rec.tmp.pdb"
+    lig_tmp = outpdb + ".lig.tmp.pdb"
+    try:
+        u.atoms[rec_ids].write(rec_tmp)
+        u.atoms[lig_ids].write(lig_tmp)
 
-    # Assign chain IDs
-    rec.chainIDs = "A"
-    lig.chainIDs = "B"
-
-    combined = rec + lig
-    combined.write(outpdb)
+        # Combinar com chain IDs: receptor=A, ligante=B
+        with open(outpdb, "w") as out:
+            for line in _add_chain_id(rec_tmp, "A"):
+                out.write(line)
+            out.write("TER\n")
+            for line in _add_chain_id(lig_tmp, "B"):
+                out.write(line)
+            out.write("END\n")
+    finally:
+        for f in (rec_tmp, lig_tmp):
+            if _os.path.exists(f):
+                _os.unlink(f)
     return True
 
 
