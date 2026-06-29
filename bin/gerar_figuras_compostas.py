@@ -87,7 +87,7 @@ def _compose_painel_from_individuals(plots_for_sid):
     Retorna fig matplotlib ou None se nenhum arquivo existe.
     """
     ORDER  = ["rmsd_bb.png",  "ncont.png", "hbond.png", "rmsd_lig.png"]
-    LABELS = ["RMSD backbone", "Contatos (# átomos)", "H-bonds", "RMSD ligante"]
+    LABELS = ["RMSD backbone", "Contacts (# atoms)", "H-bonds", "RMSD ligand"]
     imgs = [(lbl, plots_for_sid.get(fname)) for lbl, fname in zip(LABELS, ORDER)]
     if not any(p is not None and p.exists() for _, p in imgs):
         return None
@@ -101,7 +101,7 @@ def _compose_painel_from_individuals(plots_for_sid):
             except Exception:
                 placeholder(ax, lbl)
         else:
-            placeholder(ax, lbl, "arquivo ausente")
+            placeholder(ax, lbl, "file not found")
     return fig
 
 
@@ -112,16 +112,16 @@ def _norm(name):
 # ── Catálogo de sistemas (label, padrão sid) ───────────────────────────────
 
 GORE4_ENTRIES = [
-    ("QCL936-GORE4\n(estável)",    ["qcl936gore4c3", "qcl936gore4c1", "qcl936gore4"]),
-    ("ACR157-GORE4\n(estável)",    ["acr157gore4c1", "acr157gore4"]),
-    ("XP273-GORE4\n(estável)",     ["xp273gore4c1", "xp273gore4"]),
-    ("XP352-GORE4\n(dissociação)", ["xp352gore4c4", "xp352gore4c1", "xp352gore4"]),
+    ("QCL936-GORE4\n(stable)",      ["qcl936gore4c3", "qcl936gore4c1", "qcl936gore4"]),
+    ("ACR157-GORE4\n(stable)",      ["acr157gore4c1", "acr157gore4"]),
+    ("XP273-GORE4\n(stable)",       ["xp273gore4c1", "xp273gore4"]),
+    ("XP352-GORE4\n(dissociation)", ["xp352gore4c4", "xp352gore4c1", "xp352gore4"]),
 ]
 
 SKTI_ENTRIES = [
-    ("ACR157-SKTI\n(canônico 4/4)", ["acr157sktic2", "acr157sktic1", "acr157skti"]),
-    ("QCL936-SKTI\n(His+Ser+S1)",   ["qcl936sktic2", "qcl936sktic1", "qcl936skti"]),
-    ("XP273-SKTI\n(Tyr+Asp+S1)",    ["xp273sktic2", "xp273sktic1", "xp273skti"]),
+    ("ACR157-SKTI\n(canonical 4/4)", ["acr157sktic2", "acr157sktic1", "acr157skti"]),
+    ("QCL936-SKTI\n(His+Ser+S1)",    ["qcl936sktic2", "qcl936sktic1", "qcl936skti"]),
+    ("XP273-SKTI\n(Tyr+Asp+S1)",     ["xp273sktic2", "xp273sktic1", "xp273skti"]),
 ]
 
 BEN_ENTRIES = [
@@ -149,7 +149,7 @@ def _find(index, patterns):
 
 # ── Funções de renderização ────────────────────────────────────────────────
 
-def placeholder(ax, label, msg="arquivo não encontrado\n(rodar no servidor)"):
+def placeholder(ax, label, msg="file not found\n(run on server)"):
     ax.set_facecolor("#f0f0f0")
     ax.text(0.5, 0.5, f"{label}\n\n{msg}", ha="center", va="center",
             transform=ax.transAxes, fontsize=9, color="#555555",
@@ -170,7 +170,7 @@ def render_panel(ax, img_path, label, letter=None):
             ax.axis("off")
             ax.set_title(label, fontsize=10, pad=4, fontweight="bold")
         except Exception as e:
-            placeholder(ax, label, f"erro ao carregar:\n{e}")
+            placeholder(ax, label, f"error loading:\n{e}")
     else:
         placeholder(ax, label)
     if letter:
@@ -238,7 +238,7 @@ def make_composite(entries, index, n_cols, figsize, fig_title, idx_individual=No
 
 def fig1(outdir, idx_painel, idx_ind):
     fig = make_composite(GORE4_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
-                         fig_title="Figura 1 — Parâmetros dinâmicos dos complexos série GORE4 (100 ns)",
+                         fig_title="Figure 1 — Dynamic parameters of GORE4-series complexes (100 ns)",
                          idx_individual=idx_ind)
     p = outdir / "Figure_1.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
@@ -247,7 +247,7 @@ def fig1(outdir, idx_painel, idx_ind):
 
 def fig2(outdir, idx_triad):
     fig = make_composite(GORE4_ENTRIES, idx_triad, n_cols=2, figsize=(14, 10),
-                         fig_title="Figura 2 — Distâncias mínimas ao sítio catalítico — série GORE4")
+                         fig_title="Figure 2 — Minimum distances to the catalytic site — GORE4 series")
     p = outdir / "Figure_2.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -255,7 +255,7 @@ def fig2(outdir, idx_triad):
 
 def fig3(outdir, idx_painel, idx_ind):
     fig = make_composite(SKTI_ENTRIES, idx_painel, n_cols=3, figsize=(18, 6),
-                         fig_title="Figura 3 — Parâmetros dinâmicos dos complexos série SKTI (100 ns)",
+                         fig_title="Figure 3 — Dynamic parameters of SKTI-series complexes (100 ns)",
                          idx_individual=idx_ind)
     p = outdir / "Figure_3.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
@@ -264,7 +264,7 @@ def fig3(outdir, idx_painel, idx_ind):
 
 def fig4(outdir, idx_triad):
     fig = make_composite(SKTI_ENTRIES, idx_triad, n_cols=3, figsize=(18, 6),
-                         fig_title="Figura 4 — Distâncias mínimas ao sítio catalítico — série SKTI")
+                         fig_title="Figure 4 — Minimum distances to the catalytic site — SKTI series")
     p = outdir / "Figure_4.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -272,7 +272,7 @@ def fig4(outdir, idx_triad):
 
 def fig5(outdir, idx_painel, idx_ind):
     fig = make_composite(BEN_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
-                         fig_title="Figura 5 — Dissociação da benzamidina em quatro isoformas (200 ns)",
+                         fig_title="Figure 5 — Benzamidine dissociation in four isoforms (200 ns)",
                          idx_individual=idx_ind)
     p = outdir / "Figure_5.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
@@ -281,7 +281,7 @@ def fig5(outdir, idx_painel, idx_ind):
 
 def fig6(outdir, idx_cmap):
     fig = make_composite(STABLE_ENTRIES, idx_cmap, n_cols=3, figsize=(18, 12),
-                         fig_title="Figura 6 — Mapas de frequência de contato resíduo×resíduo (dist < 0,4 nm)")
+                         fig_title="Figure 6 — Residue×residue contact frequency maps (dist < 0.4 nm)")
     p = outdir / "Figure_6.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -289,7 +289,7 @@ def fig6(outdir, idx_cmap):
 
 def fig7(outdir, idx_prolif):
     fig = make_composite(STABLE_ENTRIES, idx_prolif, n_cols=3, figsize=(18, 12),
-                         fig_title="Figura 7 — Fingerprints ProLIF: persistência temporal de interações (%)")
+                         fig_title="Figure 7 — ProLIF fingerprints: temporal persistence of interactions (%)")
     p = outdir / "Figure_7.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
@@ -298,20 +298,20 @@ def fig7(outdir, idx_prolif):
 # ── Scan para debug ────────────────────────────────────────────────────────
 
 def cmd_scan():
-    print("=== Descoberta automática de arquivos ===")
+    print("=== Automatic file discovery ===")
     for fname, desc in [
-        ("painel_completo.png", "Painéis DM"),
-        ("triad_distances.png", "Distâncias tríade"),
+        ("painel_completo.png", "MD panels"),
+        ("triad_distances.png", "Triad distances"),
         ("contact_map.png",     "Contact maps"),
         ("prolif_persistence.png", "ProLIF"),
     ]:
         idx = _discover(fname)
-        print(f"\n{desc} ({fname}):  {len(idx)} encontrados")
+        print(f"\n{desc} ({fname}):  {len(idx)} found")
         for sid, path in sorted(idx.items()):
             print(f"  {sid:40s}  {path.relative_to(ROOT)}")
 
     idx_ind = _discover_individual_plots()
-    print(f"\nPlots individuais (analise/rmsd_bb.png etc.):  {len(idx_ind)} SIDs")
+    print(f"\nIndividual plots (analise/rmsd_bb.png etc.):  {len(idx_ind)} SIDs")
     for sid, plots in sorted(idx_ind.items()):
         print(f"  {sid:40s}  {sorted(plots.keys())}")
 
@@ -323,9 +323,9 @@ def main():
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--outdir", default="figures")
     parser.add_argument("--only", type=int, nargs="+",
-                        help="Gerar apenas figuras indicadas, ex: --only 1 2")
+                        help="Generate only specified figures, e.g.: --only 1 2")
     parser.add_argument("--scan", action="store_true",
-                        help="Listar todos os PNGs encontrados (diagnóstico)")
+                        help="List all PNGs found (diagnostic)")
     args = parser.parse_args()
 
     if args.scan:
@@ -336,7 +336,7 @@ def main():
     outdir.mkdir(parents=True, exist_ok=True)
 
     # Constrói índices uma vez
-    print("Descobrindo arquivos no repositório...")
+    print("Discovering files in repository...")
     idx_painel = _discover("painel_completo.png")
     idx_triad  = _discover("triad_distances.png")
     idx_cmap   = _discover("contact_map.png")
@@ -350,8 +350,8 @@ def main():
         "prolif": len(idx_prolif),
         "individual_plots (sids)": len(idx_ind),
     }
-    print(f"  Encontrados: {counts}")
-    print(f"  Saídas em  : {outdir}")
+    print(f"  Found     : {counts}")
+    print(f"  Output dir: {outdir}")
     print()
 
     figs = {
@@ -369,8 +369,8 @@ def main():
             figs[n]()
 
     print()
-    print("[OK] gerar_figuras_compostas.py concluído")
-    print("Para embedder no Word: python3 bin/embed_figuras_docx.py")
+    print("[OK] gerar_figuras_compostas.py done")
+    print("To embed in Word: python3 bin/embed_figuras_docx.py")
 
 
 if __name__ == "__main__":

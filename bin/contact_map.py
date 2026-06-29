@@ -308,17 +308,17 @@ def plot_contact_map(
                 ax=ax,
                 cmap='YlOrRd',
                 vmin=0, vmax=1,
-                cbar_kws={'label': 'Frequência de contato'},
+                cbar_kws={'label': 'Contact frequency'},
                 linewidths=0.2,
                 linecolor='lightgray',
                 annot=(df_plot.shape[0] * df_plot.shape[1] <= 200))
 
     ax.set_title(
-        f'{sample_id} — Mapa de Contato (cutoff {cutoff_nm} nm)\n'
-        f'{n_frames} frames | resíduos com freq ≥ {min_freq:.0%}',
+        f'{sample_id} — Contact Map (cutoff {cutoff_nm} nm)\n'
+        f'{n_frames} frames | residues with freq ≥ {min_freq:.0%}',
         fontsize=12,
     )
-    ax.set_xlabel('Ligante', fontsize=10)
+    ax.set_xlabel('Ligand', fontsize=10)
     ax.set_ylabel('Receptor', fontsize=10)
     ax.tick_params(axis='x', rotation=45, labelsize=8)
     ax.tick_params(axis='y', rotation=0, labelsize=8)

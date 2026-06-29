@@ -324,7 +324,7 @@ def run_prolif(
         ax.set_yticks(range(len(top_inter)))
         ax.set_yticklabels([str(x).replace(', ', '\n') for x in top_inter], fontsize=6)
         ax.set_xlabel('Frame', fontsize=9)
-        ax.set_title(f'{sample_id} — ProLIF Barcode (top {len(top_inter)} interações)', fontsize=11)
+        ax.set_title(f'{sample_id} — ProLIF Barcode (top {len(top_inter)} interactions)', fontsize=11)
         plt.tight_layout()
         fig.savefig(outdir / 'prolif_barcode.png', dpi=150, bbox_inches='tight')
         plt.close(fig)
@@ -353,10 +353,10 @@ def run_prolif(
             [str(x).replace(', ', '\n') for x in top30.index],
             rotation=60, ha='right', fontsize=7,
         )
-        ax.set_ylabel('Persistência (%)', fontsize=10)
+        ax.set_ylabel('Persistence (%)', fontsize=10)
         ax.set_title(
-            f'{sample_id} — Persistência de Interações ProLIF\n'
-            f'({len(df)} frames | {start_ns}–{end_ns or "fim"} ns)',
+            f'{sample_id} — ProLIF Interaction Persistence\n'
+            f'({len(df)} frames | {start_ns}–{end_ns or "end"} ns)',
             fontsize=11,
         )
         ax.axhline(20, color='gray', lw=0.8, ls='--', label='20%')

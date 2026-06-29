@@ -86,14 +86,14 @@ def rolling_stats(values, window):
 # ── Helpers de plotagem ────────────────────────────────────────────────────────
 
 def _missing(ax):
-    ax.text(0.5, 0.5, "(arquivo não encontrado)", ha='center', va='center',
+    ax.text(0.5, 0.5, "(file not found)", ha='center', va='center',
             transform=ax.transAxes, fontsize=9, color='gray')
     ax.set_xticks([]); ax.set_yticks([])
 
 
 def plot_line(ax, data, ylabel, color, title=None, hline=None,
-              xlabel="Tempo (ns)", window_ns=5.0):
-    """Linha temporal com média móvel e banda ±1 DP."""
+              xlabel="Time (ns)", window_ns=5.0):
+    """Time series with rolling mean and ±1 SD band."""
     if data is None:
         _missing(ax); return
 
@@ -117,7 +117,7 @@ def plot_line(ax, data, ylabel, color, title=None, hline=None,
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title:
-        ax.set_title(f"{title}\n(média: {media:.3f} ± {sdg:.3f})")
+        ax.set_title(f"{title}\n(mean: {media:.3f} ± {sdg:.3f})")
     if hline is not None:
         ax.axhline(hline, ls='--', color='red', alpha=0.5, lw=0.9)
     ax.grid(alpha=0.25)
@@ -128,11 +128,11 @@ def plot_rmsf(ax, data):
         _missing(ax); return
     ax.bar(data[:, 0], data[:, 1], width=1.0, color='seagreen', alpha=0.8)
     ax.bar(data[-5:, 0], data[-5:, 1], width=1.0, color='crimson',
-           label='Ligante (5 últ.)')
+           label='Ligand (last 5)')
     ax.legend()
-    ax.set_xlabel("Resíduo")
+    ax.set_xlabel("Residue")
     ax.set_ylabel("RMSF (nm)")
-    ax.set_title("Flutuação por resíduo (RMSF)")
+    ax.set_title("Per-residue fluctuation (RMSF)")
     ax.grid(alpha=0.25, axis='y')
 
 
@@ -161,10 +161,10 @@ def plot_sasa_dual(ax, sasa_prot, sasa_lig, window_ns):
     if has_p:
         _add(ax,  sasa_prot, cor_p, 'Receptor', 'SASA receptor (nm²)')
     if has_l:
-        _add(ax2, sasa_lig,  cor_l, 'Ligante',  'SASA ligante (nm²)')
+        _add(ax2, sasa_lig,  cor_l, 'Ligand',   'SASA ligand (nm²)')
 
-    ax.set_xlabel("Tempo (ns)")
-    ax.set_title("Área Acessível ao Solvente (SASA)")
+    ax.set_xlabel("Time (ns)")
+    ax.set_title("Solvent Accessible Surface Area (SASA)")
     if has_p: ax.legend(loc='upper left')
     if has_l: ax2.legend(loc='upper right')
     ax.grid(alpha=0.25)
@@ -193,9 +193,9 @@ def plot_triad_lines(ax, xvg_dict, labels, window_ns):
         _missing(ax); return
 
     ax.axhline(0.5, ls='--', color='gray', alpha=0.6, lw=0.9, label='0.5 nm')
-    ax.set_xlabel("Tempo (ns)")
-    ax.set_ylabel("Distância mínima (nm)")
-    ax.set_title("Distâncias aos Resíduos Catalíticos")
+    ax.set_xlabel("Time (ns)")
+    ax.set_ylabel("Minimum distance (nm)")
+    ax.set_title("Distances to Catalytic Residues")
     ax.legend()
     ax.grid(alpha=0.25)
 
@@ -225,8 +225,8 @@ def plot_triad_bars(ax, xvg_dict, labels):
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + 0.02,
                 f"{m:.3f} nm", ha='center', fontsize=9)
-    ax.set_ylabel("Distância média (nm)")
-    ax.set_title("Ocupação Média da Tríade Catalítica\n(média ± DP)")
+    ax.set_ylabel("Mean distance (nm)")
+    ax.set_title("Mean Catalytic Triad Occupancy\n(mean ± SD)")
     ax.legend()
     ax.grid(alpha=0.25, axis='y')
 
@@ -245,17 +245,17 @@ def plot_mmgbsa_total(ax, mmgbsa):
     ax.fill_between(frames, rm - rs, rm + rs, alpha=0.15, color='darkred')
     ax.plot(frames, rm, lw=1.6, color='darkred')
     ax.axhline(media, ls='--', color='red', lw=1.2,
-               label=f'Média: {media:.2f} kcal/mol')
+               label=f'Mean: {media:.2f} kcal/mol')
     ax.set_xlabel("Frame")
     ax.set_ylabel("ΔG bind (kcal/mol)")
-    ax.set_title(f"Energia de Ligação MM-GBSA\n(média: {media:.2f} ± {std:.2f} kcal/mol)")
+    ax.set_title(f"MM-GBSA Binding Energy\n(mean: {media:.2f} ± {std:.2f} kcal/mol)")
     ax.legend(); ax.grid(alpha=0.25)
 
 
 def plot_mmgbsa_components(ax, mmgbsa):
     components = {}
-    for key, label in [('VDWAALS', 'VdW'), ('EEL', 'Elet'),
-                       ('EGB', 'GB solvat.'), ('ESURF', 'SA')]:
+    for key, label in [('VDWAALS', 'VdW'), ('EEL', 'Elec'),
+                       ('EGB', 'GB solv.'), ('ESURF', 'SA')]:
         if key in mmgbsa:
             components[label] = mmgbsa[key]
     if not components:
@@ -267,8 +267,8 @@ def plot_mmgbsa_components(ax, mmgbsa):
     bars = ax.bar(labels, means, yerr=stds, color=colors, alpha=0.85,
                   capsize=4, edgecolor='black', linewidth=0.5)
     ax.axhline(0, color='black', lw=0.8)
-    ax.set_ylabel("Energia (kcal/mol)")
-    ax.set_title("Componentes MM-GBSA\n(média ± DP)")
+    ax.set_ylabel("Energy (kcal/mol)")
+    ax.set_title("MM-GBSA Components\n(mean ± SD)")
     for bar, m in zip(bars, means):
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height() + (2 if m >= 0 else -6),
@@ -281,9 +281,9 @@ def plot_mmgbsa_components(ax, mmgbsa):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--analise-dir", required=True)
-    ap.add_argument("--titulo",    default="Dinâmica Molecular")
+    ap.add_argument("--titulo",    default="Molecular Dynamics")
     ap.add_argument("--window-ns", type=float, default=5.0,
-                    help="Janela da média móvel em ns (padrão: 5.0)")
+                    help="Rolling window in ns (default: 5.0)")
     ap.add_argument("--mmgbsa-csv", default=None)
     ap.add_argument("--output",    default="painel_completo.png")
     args = ap.parse_args()
@@ -327,20 +327,20 @@ def main():
     # ── Linha 1: RMSD ─────────────────────────────────────────────────────────
     media_bb = xvg["rmsd_bb"][:, 1].mean() if xvg["rmsd_bb"] is not None else None
     plot_line(axes[0, 0], xvg["rmsd_bb"],  "RMSD (nm)", "navy",
-              "RMSD do Backbone", hline=media_bb, window_ns=wns)
+              "Backbone RMSD", hline=media_bb, window_ns=wns)
     plot_line(axes[0, 1], xvg["rmsd_lig"], "RMSD (nm)", "darkorange",
-              "RMSD do Ligante (peptídeo)", window_ns=wns)
+              "Ligand RMSD (peptide)", window_ns=wns)
 
     # ── Linha 2: RMSF + Rg ────────────────────────────────────────────────────
     plot_rmsf(axes[1, 0], xvg["rmsf"])
     plot_line(axes[1, 1], xvg["rg"],       "Rg (nm)",   "purple",
-              "Raio de Giro", window_ns=wns)
+              "Radius of Gyration", window_ns=wns)
 
     # ── Linha 3: Contatos + H-bonds ───────────────────────────────────────────
-    plot_line(axes[2, 0], xvg["ncont"],    "N. átomos", "teal",
-              "Contatos receptor–ligante (<0.4 nm)", window_ns=wns)
+    plot_line(axes[2, 0], xvg["ncont"],    "N. atoms", "teal",
+              "Receptor–ligand contacts (<0.4 nm)", window_ns=wns)
     plot_line(axes[2, 1], xvg["hbond"],    "N. H-bonds", "indianred",
-              "Pontes de hidrogênio receptor–ligante", window_ns=wns)
+              "Receptor–ligand hydrogen bonds", window_ns=wns)
 
     next_row = 3
 
@@ -349,7 +349,7 @@ def main():
         plot_sasa_dual(axes[next_row, 0], xvg["sasa_prot"],
                        xvg["sasa_lig"], wns)
         plot_line(axes[next_row, 1], xvg["sasa_lig"], "SASA (nm²)", "tomato",
-                  "SASA do Ligante (enterramento)", window_ns=wns)
+                  "Ligand SASA (burial)", window_ns=wns)
         next_row += 1
 
     # ── Linha Tríade ──────────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ def main():
     plt.tight_layout()
     out = os.path.join(D, args.output)
     plt.savefig(out, dpi=150, bbox_inches='tight')
-    print(f"Salvo: {out}")
+    print(f"Saved: {out}")
     plt.close()
 
     # ── PNGs individuais ──────────────────────────────────────────────────────
@@ -374,7 +374,7 @@ def main():
         ("rmsd_bb",   "RMSD (nm)",    "navy",       "rmsd_bb.png"),
         ("rmsd_lig",  "RMSD (nm)",    "darkorange",  "rmsd_lig.png"),
         ("rg",        "Rg (nm)",      "purple",      "rg.png"),
-        ("ncont",     "N. átomos",    "teal",        "ncont.png"),
+        ("ncont",     "N. atoms",     "teal",        "ncont.png"),
         ("hbond",     "N. H-bonds",   "indianred",   "hbond.png"),
         ("sasa_lig",  "SASA (nm²)",   "tomato",      "sasa_ligante.png"),
         ("sasa_prot", "SASA (nm²)",   "steelblue",   "sasa_protein.png"),
@@ -403,7 +403,7 @@ def main():
         plt.savefig(os.path.join(D, "triad_distances.png"), dpi=150, bbox_inches='tight')
         plt.close()
 
-    print("Pronto.")
+    print("Done.")
 
 
 if __name__ == "__main__":
