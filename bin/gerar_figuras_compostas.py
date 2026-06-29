@@ -128,10 +128,10 @@ SKTI_ENTRIES = [
 ]
 
 BEN_ENTRIES = [
-    ("XP273-BEN\n(~80 ns, S1=Ile229)",  ["xp273ben", "xp273benxp273ben"]),
-    ("ACR157-BEN\n(~95 ns, S1=Ile205)", ["acr157ben", "acr157benacr157ben"]),
-    ("XP352-BEN\n(~125 ns, S1=Asp262)", ["xp352ben", "xp352benxp352ben"]),
-    ("QCL936-BEN\n(~150 ns, S1=Asp241)",["qcl936ben", "qcl936benqcl936ben"]),
+    ("XP273-BEN\n(100 ns)",  ["xp273ben", "xp273benxp273ben"]),
+    ("ACR157-BEN\n(100 ns)", ["acr157ben", "acr157benacr157ben"]),
+    ("XP352-BEN\n(100 ns)",  ["xp352ben", "xp352benxp352ben"]),
+    ("QCL936-BEN\n(100 ns)", ["qcl936ben", "qcl936benqcl936ben"]),
 ]
 
 STABLE_ENTRIES = GORE4_ENTRIES[:3] + SKTI_ENTRIES  # 6 sistemas estáveis para Fig 6-7
@@ -275,7 +275,7 @@ def fig4(outdir, idx_triad):
 
 def fig5(outdir, idx_painel, idx_ind):
     fig = make_composite(BEN_ENTRIES, idx_painel, n_cols=2, figsize=(14, 10),
-                         fig_title="Figure 5 — Benzamidine dissociation in four isoforms (200 ns)",
+                         fig_title="Figure 5 — Benzamidine dynamics in four isoforms (100 ns)",
                          idx_individual=idx_ind)
     p = outdir / "Figure_5.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)

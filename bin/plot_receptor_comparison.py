@@ -123,7 +123,7 @@ def find_analise(receptor: str, treatment: str) -> Path | None:
 
 # ── Per-receptor figure ────────────────────────────────────────────────────
 
-def plot_receptor(receptor: str, outdir: Path, window_ns: float = 5.0):
+def plot_receptor(receptor: str, outdir: Path, window_ns: float = 5.0, max_ns: float = 100.0):
     print(f"\n[{receptor}]")
 
     # Discover data directories
@@ -144,7 +144,7 @@ def plot_receptor(receptor: str, outdir: Path, window_ns: float = 5.0):
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(13, n_rows * 3.8),
                              constrained_layout=True)
     fig.suptitle(
-        f"{receptor} — MD trajectories: GORE4 vs SKTI vs BEN",
+        f"{receptor} — MD trajectories: GORE4 vs SKTI vs BEN (100 ns)",
         fontsize=13, fontweight="bold",
     )
 
@@ -159,6 +159,10 @@ def plot_receptor(receptor: str, outdir: Path, window_ns: float = 5.0):
 
             t = data[:, 0]
             v = data[:, 1]
+            # Clip to max_ns so all treatments share the same time window
+            if max_ns and t[-1] > max_ns:
+                mask = t <= max_ns
+                t, v = t[mask], v[mask]
             dt = float(t[1] - t[0]) if len(t) > 1 else 0.01
             win = max(3, int(window_ns / dt))
             rm, rs = rolling_stats(v, win)
@@ -198,6 +202,8 @@ def main():
                     help="Output directory (default: figures/)")
     ap.add_argument("--window-ns", type=float, default=5.0,
                     help="Rolling mean window in ns (default: 5.0)")
+    ap.add_argument("--max-ns", type=float, default=100.0,
+                    help="Clip trajectories to this length in ns (default: 100)")
     args = ap.parse_args()
 
     outdir = ROOT / args.outdir
@@ -205,7 +211,7 @@ def main():
     print(f"Output: {outdir}")
 
     for receptor in args.receptors:
-        plot_receptor(receptor, outdir, window_ns=args.window_ns)
+        plot_receptor(receptor, outdir, window_ns=args.window_ns, max_ns=args.max_ns)
 
     print("\n[OK] done")
 
