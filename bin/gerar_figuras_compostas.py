@@ -5,16 +5,19 @@ gerar_figuras_compostas.py — Monta figuras compostas para o artigo.
 Auto-descobre os PNGs individuais de cada sistema nas subpastas *_NEW/MD/,
 results-MD/, results/ e gera:
 
-  Figura 1 — Painéis DM série GORE4 (RMSD/contacts/H-bonds/SASA)
-  Figura 2 — Distâncias tríade série GORE4
-  Figura 3 — Painéis DM série SKTI
-  Figura 4 — Distâncias tríade série SKTI
-  Figura 5 — Evento de dissociação série BEN
-  Figura 6 — Mapas de contato resíduo×resíduo
-  Figura 7 — ProLIF fingerprints de persistência
+  Figure 1 — MD parameters GORE4 series (RMSD/contacts/H-bonds/SASA)
+  Figure 2 — Triad distances GORE4 series
+  Figure 3 — MD parameters SKTI series
+  Figure 4 — Triad distances SKTI series
+  Figure 5 — Benzamidine dissociation BEN series
+  Figure 6 — Residue×residue contact frequency maps
+  Figure 7 — ProLIF fingerprints persistence
+  Figure 8 — ACR157: GORE4 vs SKTI vs BEN (per-receptor comparison)
+  Figure 9 — QCL936: GORE4 vs SKTI vs BEN
+  Figure 10 — XP273:  GORE4 vs SKTI vs BEN
 
 Uso (na raiz do repositório no servidor):
-  python3 bin/gerar_figuras_compostas.py [--outdir figures/] [--only 1 2 6] [--scan]
+  python3 bin/gerar_figuras_compostas.py [--outdir figures/] [--only 8 9 10] [--scan]
 
 Saídas: figures/Figure_N.png  (300 dpi)
 """
@@ -295,6 +298,93 @@ def fig7(outdir, idx_prolif):
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
+# ── Per-receptor comparison figures (8, 9, 10) ────────────────────────────
+
+RESULTS_MD = ROOT / "results-MD"
+
+# Plots shown as rows (file, row label) — only files present in all 3 series
+RECEPTOR_PLOTS = [
+    ("rmsd_bb.png",         "Backbone RMSD"),
+    ("rmsd_lig.png",        "Ligand RMSD"),
+    ("ncont.png",           "Contacts"),
+    ("triad_distances.png", "Triad distances"),
+    ("sasa_ligante.png",    "Ligand SASA"),
+]
+
+# Columns: (subdir in results-MD, column header)
+TREATMENTS = [
+    ("GORE4", "GORE4"),
+    ("SKTI",  "SKTI"),
+    ("BENZ",  "BEN"),
+]
+
+
+def make_receptor_comparison(receptor: str, fig_num: int, outdir: Path):
+    """
+    One figure per receptor: rows = plot type, cols = treatment (GORE4/SKTI/BEN).
+    Reads PNGs from results-MD/{treatment}/{receptor}/{fname}.
+    """
+    n_rows = len(RECEPTOR_PLOTS)
+    n_cols = len(TREATMENTS)
+
+    fig, axes = plt.subplots(
+        n_rows, n_cols,
+        figsize=(n_cols * 6, n_rows * 4.5),
+        constrained_layout=True,
+    )
+
+    fig.suptitle(
+        f"Figure {fig_num} — {receptor}: MD simulation parameters across trypsin isoforms\n"
+        f"(GORE4 | SKTI | BEN)",
+        fontsize=13, fontweight="bold",
+    )
+
+    for col_idx, (treatment_dir, treatment_label) in enumerate(TREATMENTS):
+        for row_idx, (fname, row_label) in enumerate(RECEPTOR_PLOTS):
+            ax = axes[row_idx, col_idx]
+            img_path = RESULTS_MD / treatment_dir / receptor / fname
+
+            if img_path.exists():
+                try:
+                    img = mpimg.imread(str(img_path))
+                    ax.imshow(img, aspect="auto")
+                    ax.axis("off")
+                except Exception as e:
+                    placeholder(ax, f"{treatment_label}/{fname}", f"error: {e}")
+            else:
+                placeholder(ax, f"{receptor}-{treatment_label}", f"{fname}\nnot found")
+
+            # Column header on first row only
+            if row_idx == 0:
+                ax.set_title(treatment_label, fontsize=11, fontweight="bold", pad=6)
+
+            # Row label on leftmost column only
+            if col_idx == 0:
+                ax.text(
+                    -0.03, 0.5, row_label,
+                    transform=ax.transAxes,
+                    fontsize=9, ha="right", va="center",
+                    rotation=90, fontweight="bold",
+                )
+
+    p = outdir / f"Figure_{fig_num}.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
+
+
+def fig8(outdir):
+    make_receptor_comparison("ACR157", 8, outdir)
+
+
+def fig9(outdir):
+    make_receptor_comparison("QCL936", 9, outdir)
+
+
+def fig10(outdir):
+    make_receptor_comparison("XP273", 10, outdir)
+
+
 # ── Scan para debug ────────────────────────────────────────────────────────
 
 def cmd_scan():
@@ -355,13 +445,16 @@ def main():
     print()
 
     figs = {
-        1: lambda: fig1(outdir, idx_painel, idx_ind),
-        2: lambda: fig2(outdir, idx_triad),
-        3: lambda: fig3(outdir, idx_painel, idx_ind),
-        4: lambda: fig4(outdir, idx_triad),
-        5: lambda: fig5(outdir, idx_painel, idx_ind),
-        6: lambda: fig6(outdir, idx_cmap),
-        7: lambda: fig7(outdir, idx_prolif),
+        1:  lambda: fig1(outdir, idx_painel, idx_ind),
+        2:  lambda: fig2(outdir, idx_triad),
+        3:  lambda: fig3(outdir, idx_painel, idx_ind),
+        4:  lambda: fig4(outdir, idx_triad),
+        5:  lambda: fig5(outdir, idx_painel, idx_ind),
+        6:  lambda: fig6(outdir, idx_cmap),
+        7:  lambda: fig7(outdir, idx_prolif),
+        8:  lambda: fig8(outdir),
+        9:  lambda: fig9(outdir),
+        10: lambda: fig10(outdir),
     }
     to_run = args.only if args.only else list(figs.keys())
     for n in to_run:
