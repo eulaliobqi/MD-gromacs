@@ -77,8 +77,16 @@ def find_trajectories() -> list[dict]:
         if not ndx.exists():
             continue
 
-        # ProLIF summary (opcional)
-        prolif_csv = prod_dir.parent / "prolif" / "prolif_summary.csv"
+        # ProLIF summary (opcional) — busca por glob para cobrir variações de path
+        prolif_csv = None
+        for candidate in sorted(prod_dir.parent.glob("**/prolif_summary.csv")):
+            prolif_csv = candidate
+            break
+        if prolif_csv is None:
+            # Fallback: sobe um nível (estrutura BEN: results/{ID}/{ID}/prod)
+            for candidate in sorted(prod_dir.parent.parent.glob("**/prolif_summary.csv")):
+                prolif_csv = candidate
+                break
 
         # Sample ID = diretório acima de prod/
         sid = prod_dir.parent.name
@@ -91,7 +99,7 @@ def find_trajectories() -> list[dict]:
             "tpr":       tpr,
             "xtc":       xtc,
             "ndx":       ndx,
-            "prolif_csv": prolif_csv if prolif_csv.exists() else None,
+            "prolif_csv": prolif_csv,
         })
 
     return hits
@@ -242,26 +250,46 @@ set cartoon_oval_length, 1.2
 # ── Ligante ───────────────────────────────────────────────────────────────
 hide everything, ligand
 show sticks, ligand
-util.cbac ligand          # cyan carbons, standard element colors
+color cyan, ligand and name C*
+color blue,  ligand and name N*
+color red,   ligand and name O*
+color yellow, ligand and name S*
 set stick_radius, 0.18, ligand
-show spheres, ligand and name CA   # Cα apenas (para peptídeos)
-set sphere_scale, 0.25, ligand and name CA
+
+# Cα visível para peptídeos (ignora se não existir)
+python
+try:
+    cmd.show("spheres", "ligand and name CA")
+    cmd.set("sphere_scale", 0.25, "ligand and name CA")
+except:
+    pass
+python end
 
 # ── Resíduos-chave do sítio (ProLIF top {top_n}) ─────────────────────────
 {key_res_block}
 # ── H-bonds e contatos polares ────────────────────────────────────────────
-distance hbonds, receptor, ligand, 3.5, mode=2
-set dash_color, red
-set dash_width, 2.5
-set dash_gap, 0.35
-set dash_radius, 0.06
-hide labels, hbonds
+python
+try:
+    cmd.distance("hbonds", "receptor", "ligand", 3.5, mode=2)
+    cmd.set("dash_color", "red")
+    cmd.set("dash_width", 2.5)
+    cmd.set("dash_gap", 0.35)
+    cmd.set("dash_radius", 0.06)
+    cmd.hide("labels", "hbonds")
+except:
+    pass
+python end
 
 # ── Superfície do sítio de ligação (transparente) ─────────────────────────
-create pocket, byres receptor within 5 of ligand
-show surface, pocket
-color tv_blue, pocket
-set transparency, 0.60, pocket
+python
+try:
+    cmd.create("pocket", "byres receptor within 5 of ligand")
+    cmd.show("surface", "pocket")
+    cmd.color("tv_blue", "pocket")
+    cmd.set("transparency", 0.60, "pocket")
+except:
+    pass
+python end
 
 # ── Câmera e iluminação ────────────────────────────────────────────────────
 orient ligand
@@ -325,14 +353,19 @@ def run_pymol(pml_path: Path) -> bool:
     for cmd in ("pymol", "pymol3", "/usr/bin/pymol", "/opt/pymol/bin/pymol"):
         if shutil.which(cmd):
             try:
-                subprocess.run(
+                r = subprocess.run(
                     [cmd, "-cq", str(pml_path)],
-                    check=True, timeout=120,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    check=True, timeout=180,
+                    capture_output=True, text=True,
                 )
                 return True
-            except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-                pass
+            except subprocess.CalledProcessError as e:
+                # Mostra as últimas linhas de stderr para diagnóstico
+                if e.stderr:
+                    tail = "\n".join(e.stderr.strip().splitlines()[-6:])
+                    print(f"  [PyMOL stderr]\n{tail}")
+            except subprocess.TimeoutExpired:
+                print("  [PyMOL] timeout após 180 s")
     return False
 
 
