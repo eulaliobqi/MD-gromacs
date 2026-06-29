@@ -10,14 +10,16 @@ results-MD/, results/ e gera:
   Figure 3 — MD parameters SKTI series
   Figure 4 — Triad distances SKTI series
   Figure 5 — Benzamidine dissociation BEN series
-  Figure 6 — Residue×residue contact frequency maps
-  Figure 7 — ProLIF fingerprints persistence
-  Figure 8 — ACR157: GORE4 vs SKTI vs BEN (per-receptor comparison)
-  Figure 9 — QCL936: GORE4 vs SKTI vs BEN
+  Figure 6A — Contact maps: GORE4 series (3 systems)
+  Figure 6B — Contact maps: SKTI series (3 systems)
+  Figure 7A — ProLIF fingerprints: GORE4 series
+  Figure 7B — ProLIF fingerprints: SKTI series
+  Figure 8  — ACR157: GORE4 vs SKTI vs BEN (per-receptor comparison)
+  Figure 9  — QCL936: GORE4 vs SKTI vs BEN
   Figure 10 — XP273:  GORE4 vs SKTI vs BEN
 
 Uso (na raiz do repositório no servidor):
-  python3 bin/gerar_figuras_compostas.py [--outdir figures/] [--only 8 9 10] [--scan]
+  python3 bin/gerar_figuras_compostas.py [--outdir figures/] [--only 6a 6b 7a 7b] [--scan]
 
 Saídas: figures/Figure_N.png  (300 dpi)
 """
@@ -165,13 +167,13 @@ def add_panel_label(ax, letter, fontsize=13):
             fontsize=fontsize, fontweight="bold", va="top", ha="right")
 
 
-def render_panel(ax, img_path, label, letter=None):
+def render_panel(ax, img_path, label, letter=None, title_fontsize=12):
     if img_path and img_path.exists():
         try:
             img = mpimg.imread(str(img_path))
             ax.imshow(img, aspect="auto")
             ax.axis("off")
-            ax.set_title(label, fontsize=10, pad=4, fontweight="bold")
+            ax.set_title(label, fontsize=title_fontsize, pad=6, fontweight="bold")
         except Exception as e:
             placeholder(ax, label, f"error loading:\n{e}")
     else:
@@ -233,7 +235,7 @@ def make_composite(entries, index, n_cols, figsize, fig_title, idx_individual=No
         r, c = divmod(idx, n_cols)
         axes[r, c].axis("off")
 
-    fig.suptitle(fig_title, fontsize=12, fontweight="bold", y=1.01)
+    fig.suptitle(fig_title, fontsize=14, fontweight="bold", y=1.01)
     return fig
 
 
@@ -282,18 +284,38 @@ def fig5(outdir, idx_painel, idx_ind):
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-def fig6(outdir, idx_cmap):
-    fig = make_composite(STABLE_ENTRIES, idx_cmap, n_cols=3, figsize=(18, 12),
-                         fig_title="Figure 6 — Residue×residue contact frequency maps (dist < 0.4 nm)")
-    p = outdir / "Figure_6.png"
+GORE4_STABLE = GORE4_ENTRIES[:3]   # QCL936, ACR157, XP273
+SKTI_STABLE  = SKTI_ENTRIES         # ACR157, QCL936, XP273
+
+
+def fig6a(outdir, idx_cmap):
+    fig = make_composite(GORE4_STABLE, idx_cmap, n_cols=3, figsize=(24, 9),
+                         fig_title="Figure 6A — Contact maps: GORE4 series (dist < 0.4 nm)")
+    p = outdir / "Figure_6A.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
 
-def fig7(outdir, idx_prolif):
-    fig = make_composite(STABLE_ENTRIES, idx_prolif, n_cols=3, figsize=(18, 12),
-                         fig_title="Figure 7 — ProLIF fingerprints: temporal persistence of interactions (%)")
-    p = outdir / "Figure_7.png"
+def fig6b(outdir, idx_cmap):
+    fig = make_composite(SKTI_STABLE, idx_cmap, n_cols=3, figsize=(24, 9),
+                         fig_title="Figure 6B — Contact maps: SKTI series (dist < 0.4 nm)")
+    p = outdir / "Figure_6B.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
+
+
+def fig7a(outdir, idx_prolif):
+    fig = make_composite(GORE4_STABLE, idx_prolif, n_cols=3, figsize=(24, 9),
+                         fig_title="Figure 7A — ProLIF fingerprints: GORE4 series — interaction persistence (%)")
+    p = outdir / "Figure_7A.png"
+    fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
+    print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
+
+
+def fig7b(outdir, idx_prolif):
+    fig = make_composite(SKTI_STABLE, idx_prolif, n_cols=3, figsize=(24, 9),
+                         fig_title="Figure 7B — ProLIF fingerprints: SKTI series — interaction persistence (%)")
+    p = outdir / "Figure_7B.png"
     fig.savefig(p, dpi=300, bbox_inches="tight"); plt.close(fig)
     print(f"  [OK] {p.name}  ({p.stat().st_size//1024} KB)")
 
@@ -412,8 +434,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--outdir", default="figures")
-    parser.add_argument("--only", type=int, nargs="+",
-                        help="Generate only specified figures, e.g.: --only 1 2")
+    parser.add_argument("--only", nargs="+",
+                        help="Generate only specified figures, e.g.: --only 1 2 6a 6b 7a 7b")
     parser.add_argument("--scan", action="store_true",
                         help="List all PNGs found (diagnostic)")
     args = parser.parse_args()
@@ -445,21 +467,25 @@ def main():
     print()
 
     figs = {
-        1:  lambda: fig1(outdir, idx_painel, idx_ind),
-        2:  lambda: fig2(outdir, idx_triad),
-        3:  lambda: fig3(outdir, idx_painel, idx_ind),
-        4:  lambda: fig4(outdir, idx_triad),
-        5:  lambda: fig5(outdir, idx_painel, idx_ind),
-        6:  lambda: fig6(outdir, idx_cmap),
-        7:  lambda: fig7(outdir, idx_prolif),
-        8:  lambda: fig8(outdir),
-        9:  lambda: fig9(outdir),
-        10: lambda: fig10(outdir),
+        "1":  lambda: fig1(outdir, idx_painel, idx_ind),
+        "2":  lambda: fig2(outdir, idx_triad),
+        "3":  lambda: fig3(outdir, idx_painel, idx_ind),
+        "4":  lambda: fig4(outdir, idx_triad),
+        "5":  lambda: fig5(outdir, idx_painel, idx_ind),
+        "6a": lambda: fig6a(outdir, idx_cmap),
+        "6b": lambda: fig6b(outdir, idx_cmap),
+        "7a": lambda: fig7a(outdir, idx_prolif),
+        "7b": lambda: fig7b(outdir, idx_prolif),
+        "8":  lambda: fig8(outdir),
+        "9":  lambda: fig9(outdir),
+        "10": lambda: fig10(outdir),
     }
-    to_run = args.only if args.only else list(figs.keys())
+    to_run = [str(x) for x in args.only] if args.only else list(figs.keys())
     for n in to_run:
         if n in figs:
             figs[n]()
+        else:
+            print(f"[WARN] Figure '{n}' not recognised — valid keys: {list(figs.keys())}")
 
     print()
     print("[OK] gerar_figuras_compostas.py done")
